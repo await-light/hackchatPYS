@@ -33,7 +33,10 @@ class Channel:
 		for channel,userlist in self.allchannel.items():
 			for user in userlist:
 				if user.websocket == websocket:
+					usr = user.nick
 					userlist.remove(user)
+					return usr
+		return None
 
 	def broadcasttext(self,channel,data): #,blacklist=[]
 		'''
