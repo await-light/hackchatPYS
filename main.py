@@ -7,7 +7,7 @@ from core.join import join
 
 channels = Channel()
 
-async def pro(websocket):
+async def serverrecv(websocket):
 	try:
 		async for message in websocket:
 			try:
@@ -26,18 +26,20 @@ async def pro(websocket):
 							websocket=websocket)
 						await websocket.send(result)
 
-						print(channels.allchannel)
-
-	except:
-		pass
+	except websockets.exceptions.ConnectionClosedError:
+		print(websocket,"is left")
 
 
-async def main():
-	async with websockets.serve(
-		pro,"localhost",6060):
-		await asyncio.Future()
+
+async def serverrun(websocket,path):
+	await serverrecv(websocket)
 
 
 
 if __name__ == '__main__':
-	asyncio.run(main())
+	server = websockets.serve(
+		serverrun,
+		"localhost",
+		6060)
+	asyncio.get_event_loop().run_until_complete(server)
+	asyncio.get_event_loop().run_forever()
