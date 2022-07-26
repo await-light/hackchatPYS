@@ -1,11 +1,5 @@
+import json
 import websockets
-
-
-class User:
-	def __init__(self,websocket,nick):
-		self.websocket = websocket
-		self.nick = nick
-
 
 class Channel:
 	def __init__(self):
@@ -17,30 +11,13 @@ class Channel:
 		# }
 		'''
 
-	def user_join(self,websocket,nick,channel):
-		'''
-		only add the user to the specify channel's userlist
-
-		# "your-channel":[User(websocekt...)]
-		# 						^
-		#						|
-		#					like this
-		'''
-
-		# if allchannel doesn't include channel
-		# create a list and add the User to it
-		userlist = self.allchannel.setdefault(channel,[])
-
-		if userlist == [] or nick.lower() not in [user.nick.lower() for user in userlist]:
-			userlist.append(User(websocket,nick))
-			return json.dumps({
-				"cmd":"onlineSet",
-				"nicks":[user.nick for user in userlist]})
-		else:
-			return json.dumps({
-				"cmd":"warn",
-				"text":"Nickname taken"})
-			# nickname taken
+	@ property
+	def alluser(self):
+		result = []
+		for channel,userlist in self.allchannel.items():
+			for user in userlist:
+				result.append(user)
+		return result
 
 	def user_leave(self,websocket):
 		'''
@@ -58,9 +35,9 @@ class Channel:
 				if user.websocket == websocket:
 					userlist.remove(user)
 
-	def boardcasttext(self,channel,data): #,blacklist=[]
+	def broadcasttext(self,channel,data): #,blacklist=[]
 		'''
-		boardcast the message in specify channel
+		broadcast the message in specify channel
 		'''
 
 		# if there is the channel,it return the user object list
@@ -68,5 +45,5 @@ class Channel:
 		userlist = self.allchannel.setdefault(channel,[])
 
 		if userlist != []:
-			boardcastwebsocket = [user.websocket for user in userlist]
-			websockets.boardcast(boardcastwebsocket,data)
+			broadcastwebsocket = [user.websocket for user in userlist]
+			websockets.broadcast(broadcastwebsocket,data)
