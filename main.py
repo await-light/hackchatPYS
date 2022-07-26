@@ -1,9 +1,12 @@
 import json
 import asyncio
+import logging
 import websockets
 
 from core.globalset import Channel
 from core.join import join
+
+logging.basicConfig(format="%(asctime)s [%(levelname)s] %(message)s",level=20)
 
 channels = Channel()
 
@@ -13,8 +16,8 @@ async def serverrecv(websocket):
 			try:
 				message = json.loads(message)
 			
-			except:
-				print("can't handle other data except json")
+			except Exception as error:
+				logging.error(str(error))
 
 			else:
 				if ("cmd" and "nick" and "channel") in message:
@@ -26,11 +29,14 @@ async def serverrecv(websocket):
 							websocket=websocket)
 						await websocket.send(result)
 
-	finally:
-		channels.user_leave(websocket)
-		print(websocket,"left")
-	
+	except websockets.exceptions.ConnectionClosedError:
+		logging.error("Connect to remote host was lost")
+		pass
 
+	finally:
+		usrleft = channels.user_leave(websocket)
+		if usrleft != None:
+			logging.info("%s left" % usrleft)
 
 
 async def serverrun(websocket,path):
