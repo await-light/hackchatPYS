@@ -26,14 +26,18 @@ async def serverrecv(websocket):
 							websocket=websocket)
 						await websocket.send(result)
 
-	except websockets.exceptions.ConnectionClosedError:
-		print(websocket,"is left")
+	finally:
+		channels.user_leave(websocket)
+		print(websocket,"left")
+	
 
 
 
 async def serverrun(websocket,path):
+	'''
+	start running
+	'''
 	await serverrecv(websocket)
-
 
 
 if __name__ == '__main__':
