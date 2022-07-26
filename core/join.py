@@ -2,6 +2,7 @@ import re
 import json
 import hashlib
 import base64
+import logging
 
 class User:
 	def __init__(self,websocket,nick,trip):
@@ -48,6 +49,7 @@ def join(nick,joinchannel,channels,websocket):
 			s2pwd = hashlib.sha256(password.encode()).hexdigest()
 			trip = base64.b64encode(s2pwd.encode()).decode()[:6]
 	else: # 
+		logging.info("%s tried to join,but failed" % websocket)
 		return json.dumps({
 			"cmd":"warn",
 			"text":"Nickname must consist of up"
@@ -72,6 +74,8 @@ def join(nick,joinchannel,channels,websocket):
 			
 			# add the user to userlist
 			userlist.append(User(websocket,nick,trip))
+
+			logging.info("%s joined" % nick)
 			
 			return json.dumps({
 				"cmd":"onlineSet",
@@ -80,7 +84,9 @@ def join(nick,joinchannel,channels,websocket):
 					"nick":user.nick,
 					"trip":user.trip
 					} for user in userlist]})
+
 		else:
+			logging.info("%s tried to join,but failed" % websocket)
 			return json.dumps({
 				"cmd":"warn",
 				"text":"Nickname taken"})
