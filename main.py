@@ -3,52 +3,56 @@ import asyncio
 import logging
 import websockets
 
-from core.globalset import Channel
-from core.join import join
+from base import Users
+from commands_apply import COMMAND_DB
 
-logging.basicConfig(format="%(asctime)s [%(levelname)s] %(message)s",level=20)
+# logging output config
+logging.basicConfig(format="%(asctime)s [%(levelname)s] %(message)s",level=10)
 
-channels = Channel()
+# all user objects
+users = Users()
 
-async def serverrecv(websocket):
+async def server_recv(websocket):
 	try:
-		async for message in websocket:
+		async for data in websocket:
 			try:
-				message = json.loads(message)
+				data = json.loads(data)
 			
 			except Exception as error:
 				logging.error(str(error))
 
 			else:
-				if ("cmd" and "nick" and "channel") in message:
-					if message["cmd"] == "join":
-						global channels
-						result = join(nick=message["nick"],
-							joinchannel=message["channel"],
-							channels=channels,
-							websocket=websocket)
-						await websocket.send(result)
+				websocket = websocket
+				global users
+				users = users
+				data = data
+
+				if "cmd" in data:
+					findresult = COMMAND_DB.setdefault(data["cmd"],None)
+					if findresult != None:
+						r = findresult(websocket,users,data)()
+						await websocket.send(r)
+					else:
+						logging.warning("Command Not Found :%s" % data["cmd"])
 
 	except websockets.exceptions.ConnectionClosedError:
+		# perhaps because the client disconnects without a ws.close()
 		logging.error("Connect to remote host was lost")
-		pass
 
 	finally:
-		usrleft = channels.user_leave(websocket)
-		if usrleft != None:
-			logging.info("%s left" % usrleft)
+		pass
 
 
-async def serverrun(websocket,path):
+async def server_run(websocket,path):
 	'''
 	start running
 	'''
-	await serverrecv(websocket)
+	await server_recv(websocket)
 
 
 if __name__ == '__main__':
 	server = websockets.serve(
-		serverrun,
+		server_run,
 		"localhost",
 		6060)
 	asyncio.get_event_loop().run_until_complete(server)
