@@ -5,6 +5,7 @@ import websockets
 
 from base import Users
 from commands_apply import COMMAND_DB
+from commands_apply import SPEC_DB
 
 # logging output config
 logging.basicConfig(format="%(asctime)s [%(levelname)s] %(message)s",level=10)
@@ -40,7 +41,7 @@ async def server_recv(websocket):
 		logging.error("Connect to remote host was lost")
 
 	finally:
-		pass
+		SPEC_DB["left"](websocket,users,data)()
 
 
 async def server_run(websocket,path):
