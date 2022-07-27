@@ -6,7 +6,8 @@ import core
 import spec
 
 COMMAND_DB = {
-	"join":core.join.Join
+	"join":core.join.Join,
+	"chat":core.chat.Chat
 }
 
 SPEC_DB = {

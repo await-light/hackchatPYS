@@ -1,10 +1,12 @@
 import sys
 sys.path.append("../")
 
-import base
-
+import time
+import json
 import logging
 import websockets
+
+import base
 
 class Left(base.CommandBase):
 	def __init__(self,websocket,users,data):
@@ -23,16 +25,21 @@ class Left(base.CommandBase):
 		for user in self.users.userset:
 			if user.websocket == self.websocket:
 				# get his channel for broadcasting
-				channel = user.channel
+				user = user
 				self.users.userset.remove(user)
 				break
 		else:
-			logging.warning("User not found.")
+			logging.warning("User not found.But connection closed")
 			return None
 
 		# broadcast
-		self.users.broadcasttext(channel,
+		self.users.broadcasttext(user.channel,
 			json.dumps({
-				"cmd":"onlineRemove"
+				"cmd":"onlineRemove",
+				"userid":user.userid,
+				"nick":user.nick,
+				"channel":user.channel,
+				"time":round(time.time())
 				})
 			)
+		return None
