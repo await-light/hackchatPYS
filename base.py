@@ -11,7 +11,7 @@ class User:
 		utype="user",
 		isbot=False,
 		isme=False,
-		userid=random.random() * 9999999999999,
+		userid=round(random.random() * 9999999999999),
 		level=100,
 		color=False,
 		hash_=None):
