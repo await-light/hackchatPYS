@@ -24,9 +24,13 @@ class Join(base.CommandBase):
 		return False
 
 	def judge_nick(self,nick):
+		'''
+		if correct return None
+		else return error message
+		'''
 		# judge whether it has password
-		passwordfalsepattern = r"^([a-zA-Z_]{1,24})$"
-		passwordtruepattern = r"^([a-zA-Z_]{1,24}) #(.+)$"
+		passwordfalsepattern = r"^([a-zA-Z0-9_]{1,24})$"
+		passwordtruepattern = r"^([a-zA-Z0-9_]{1,24}) #(.+)$"
 		falseresult = re.findall(passwordfalsepattern,nick)
 		trueresult = re.findall(passwordtruepattern,nick)
 		correct = True
