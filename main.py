@@ -30,9 +30,13 @@ async def server_recv(websocket):
 
 				if "cmd" in data:
 					findresult = COMMAND_DB.setdefault(data["cmd"],None)
+
+					# if the cmd function in DB,execute it otherwise warning
 					if findresult != None:
 						r = findresult(websocket,users,data)()
-						await websocket.send(r)
+						logging.debug(r)
+						if r != None:
+							await websocket.send(r)
 					else:
 						logging.warning("Command Not Found :%s" % data["cmd"])
 
