@@ -1,2 +1,1 @@
 import join
-import left
