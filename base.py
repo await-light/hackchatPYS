@@ -8,12 +8,12 @@ class User:
 		nick,
 		trip,
 		channel,
-		utype="mod",
+		utype="user",
 		isbot=False,
 		isme=False,
 		userid=round(random.random() * 9999999999999),
 		level=100,
-		color=False,
+		color=None,
 		hash_=None):
 
 		self.websocket = websocket
@@ -26,7 +26,7 @@ class User:
 		self.userid = userid
 		self.level = level
 		self.color = color
-		self.hash_ = hash_
+		self.hash_ = websocket.host
 
 
 class Users:
@@ -56,3 +56,8 @@ class CommandBase:
 
 	def __call__(self):
 		return self.execute()
+
+
+class Handler:
+	def __init__(self,data):
+		self.data = data
