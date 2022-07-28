@@ -1,6 +1,8 @@
 import json
 import websockets
 import random
+import base64
+import hashlib
 
 class User:
 	def __init__(self,
@@ -26,7 +28,9 @@ class User:
 		self.userid = userid
 		self.level = level
 		self.color = color
-		self.hash_ = websocket.host
+		jhash = hashlib.sha256(websocket.host.encode()).hexdigest()
+		hashhost = base64.b64encode(jhash.encode()).decode()
+		self.hash_ = hashhost
 
 
 class Users:
@@ -49,7 +53,17 @@ class CommandBase:
 	def __init__(self,websocket,users,data):
 		self.websocket = websocket
 		self.users = users
-		self.data = data
+		if str(type(data)) == "<class 'list'>":
+			self.data = self._match(self.argslist,data)
+		else:
+			self.data = data
+
+	def _match(self,argslist,fargs):
+		jsondata = {}
+		if len(argslist) == len(fargs):
+			for index,arg in enumerate(argslist):
+				jsondata[arg] = fargs[index]
+		return jsondata
 
 	def execute(self):
 		pass
@@ -60,4 +74,9 @@ class CommandBase:
 
 class Handler:
 	def __init__(self,data):
-		self.data = data
+		# ^color #ff6000$
+		data = data.split()
+		# color
+		self.command = data[0]
+		# args
+		self.args = data[1:]
