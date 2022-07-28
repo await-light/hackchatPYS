@@ -1,4 +1,6 @@
-
+'''
+just a failed command
+'''
 
 import sys
 sys.path.append("../")
