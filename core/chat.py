@@ -25,8 +25,7 @@ class Chat(base.CommandBase):
 
 		text = self.data["text"]
 
-		self.users.broadcasttext(userobj.channel,
-			json.dumps({
+		data = {
 				"cmd":"chat",
 				"nick":userobj.nick,
 				"uType":userobj.utype,
@@ -34,8 +33,16 @@ class Chat(base.CommandBase):
 				"channel":user.channel,
 				"text":text,
 				"level":userobj.level,
-				"trip":userobj.trip,
-				"color":userobj.color,
 				"time":round(time.time())
-				}))
+			}
+
+		if userobj.color != None:
+			data["color"] = userobj.color
+
+		if userobj.trip != None:
+			data["trip"] = userobj.trip
+
+		self.users.broadcasttext(userobj.channel,
+			json.dumps(data))
+
 		return None
