@@ -31,6 +31,17 @@ async def server_recv(websocket):
 				if "cmd" in data:
 					findresult = COMMAND_DB.setdefault(data["cmd"],None)
 
+					'''
+					if result == None
+					> do nothing
+
+					if result -> json
+					> send
+
+					if result -> handler
+					> handle cmd in DB
+					'''
+
 					# if the cmd function in DB,execute it otherwise warning
 					if findresult != None:
 						r = findresult(websocket,users,data)()
