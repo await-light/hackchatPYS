@@ -6,9 +6,10 @@ import websockets
 import base
 from commands_apply import COMMAND_DB
 from commands_apply import INTERNAL_DB
+from commands_apply import CALLABLE_DB
 
 # logging output config
-logging.basicConfig(format="%(asctime)s [%(levelname)s] %(message)s",level=10)
+logging.basicConfig(format="%(asctime)s [%(levelname)s] %(message)s",level=20)
 
 # all user objects
 users = base.Users()
@@ -29,27 +30,38 @@ async def server_recv(websocket):
 				data = data
 
 				if "cmd" in data:
-					findresult = COMMAND_DB.setdefault(data["cmd"],None)
-
 					'''
-					if result == None
-					> do nothing
+						if result == None
+						> do nothing
 
-					if result -> json
-					> send
+						if result -> str
+						> send
 
-					if result -> handler
-					> handle cmd in DB
+						if result -> handler
+						> handle cmd in DB
 					'''
 
-					# if the cmd function in DB,execute it otherwise warning
-					if findresult != None:
-						r = findresult(websocket,users,data)()
-						logging.debug(r)
-						if r != None:
+					found = COMMAND_DB.setdefault(data["cmd"],None)
+
+					if found != None:
+						r = found(websocket,users,data)()
+
+						if str(type(r)) == "<class 'NoneType'>":
+							pass
+
+						elif str(type(r)) == "<class 'str'>":
 							await websocket.send(r)
+
+						elif str(type(r)) == "<class 'base.Handler'>":
+							execfuction = CALLABLE_DB.setdefault(r.command,None)
+							if execfuction != None:
+								logging.info("execute %s with %s" % (execfuction,r.args))
+								rc = execfuction(websocket,users,r.args)()
+								if str(type(rc)) == "<class 'str'>":
+									await websocket.send(rc)
 					else:
 						logging.warning("Command Not Found :%s" % data["cmd"])
+
 
 	except websockets.exceptions.ConnectionClosedError:
 		# perhaps because the client disconnects without a ws.close()
