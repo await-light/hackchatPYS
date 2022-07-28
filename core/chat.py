@@ -1,5 +1,6 @@
 import json
 import time
+import logging
 
 import sys
 sys.path.append("../")
@@ -25,6 +26,9 @@ class Chat(base.CommandBase):
 
 		text = self.data["text"]
 
+		if text[0] == "/" and len(text.strip()) >= 2: # command
+			return base.Handler(text[1:].strip())
+
 		data = {
 				"cmd":"chat",
 				"nick":userobj.nick,
@@ -44,5 +48,6 @@ class Chat(base.CommandBase):
 
 		self.users.broadcasttext(userobj.channel,
 			json.dumps(data))
+		logging.info("%s : %s" % (userobj.nick,text))
 
 		return None
