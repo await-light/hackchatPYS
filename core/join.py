@@ -148,8 +148,7 @@ class Join(base.CommandBase):
 						"hash":user.hash_,
 						"level":user.level,
 						"userid":user.userid,
-						"isbot":user.isbot,
-						"color":user.color
+						"isbot":user.isbot
 						}
 					if user.trip != None:
 						data["trip"] = user.trip
