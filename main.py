@@ -3,15 +3,15 @@ import asyncio
 import logging
 import websockets
 
-from base import Users
+import base
 from commands_apply import COMMAND_DB
-from commands_apply import SPEC_DB
+from commands_apply import INTERNAL_DB
 
 # logging output config
 logging.basicConfig(format="%(asctime)s [%(levelname)s] %(message)s",level=10)
 
 # all user objects
-users = Users()
+users = base.Users()
 
 async def server_recv(websocket):
 	try:
@@ -45,7 +45,7 @@ async def server_recv(websocket):
 		logging.error("Connect to remote host was lost")
 
 	finally:
-		SPEC_DB["left"](websocket,users,data)()
+		INTERNAL_DB["left"](websocket,users,data)()
 
 
 async def server_run(websocket,path):

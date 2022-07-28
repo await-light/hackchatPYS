@@ -1,8 +1,3 @@
-import sys
-sys.path.append("../")
-
-import base
-
 import re
 import time
 import json
@@ -10,6 +5,10 @@ import random
 import hashlib
 import base64
 import logging
+
+import sys
+sys.path.append("../")
+import base
 
 class Join(base.CommandBase):
 	def __init__(self,websocket,users,data):

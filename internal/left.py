@@ -1,11 +1,10 @@
-import sys
-sys.path.append("../")
-
 import time
 import json
 import logging
 import websockets
 
+import sys
+sys.path.append("../")
 import base
 
 class Left(base.CommandBase):

@@ -1,15 +1,16 @@
 import sys
 sys.path.append("core/")
-sys.path.append("spec/")
+sys.path.append("internal/")
 
-import core
-import spec
+import join
+import chat
+import left
 
 COMMAND_DB = {
-	"join":core.join.Join,
-	"chat":core.chat.Chat
+	"join":join.Join,
+	"chat":chat.Chat
 }
 
-SPEC_DB = {
-	"left":spec.left.Left
+INTERNAL_DB = {
+	"left":left.Left
 }

@@ -8,7 +8,7 @@ class User:
 		nick,
 		trip,
 		channel,
-		utype="user",
+		utype="mod",
 		isbot=False,
 		isme=False,
 		userid=round(random.random() * 9999999999999),
