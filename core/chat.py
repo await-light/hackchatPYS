@@ -26,8 +26,8 @@ class Chat(base.CommandBase):
 
 		text = self.data["text"]
 
-		if text[0] == "/" and len(text.strip()) >= 2: # command
-			return base.Handler(text[1:].strip())
+		if text[0] == "/":
+			return base.Handler(text)
 
 		data = {
 				"cmd":"chat",
