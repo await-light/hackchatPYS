@@ -41,4 +41,7 @@ class Left(base.CommandBase):
 				"time":round(time.time())
 				})
 			)
+
+		logging.info("%s left %s" % (user.nick,user.channel))
+
 		return None

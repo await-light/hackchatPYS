@@ -1,5 +1,6 @@
 import time
 import json
+import logging
 
 import sys
 sys.path.append("../")
@@ -36,5 +37,8 @@ class Emote(base.CommandBase):
 			# broadcast
 			self.users.broadcasttext(userobj.channel,
 				json.dumps(data))
+
+			logging.info("%s(?%s) emoted: %s" % (
+				userobj.nick,userobj.channel,self.data["text"]))
 
 			return None

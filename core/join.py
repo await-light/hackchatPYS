@@ -132,7 +132,7 @@ class Join(base.CommandBase):
 					
 				self.users.userset.add(init)
 
-				logging.info("%s joined %s" % (newnick,channel))
+				logging.info("%s joined ?%s" % (newnick,channel))
 
 				resultdata = {
 					"cmd":"onlineSet",

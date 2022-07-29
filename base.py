@@ -78,24 +78,24 @@ class Handler:
 		self.data = self._handledata(command,content)
 
 	def _handledata(self,command,content):
-		if command == "changecolor" or "color":
-			wm = re.findall(r"^\#?([a-f0-9]{6})$")
+		if command == "me":
+			return {
+				"cmd":"emote",
+				"text":content
+				}
+
+		elif command == "changecolor" or "color":
+			wm = re.findall(r"^\#?([A-Fa-f0-9]{6})$",content)
 			if wm:
 				return {
 					"cmd":"changecolor",
-					"color":content
+					"color":wm[0]
 					} 
 			else:
 				return json.dumps({
 					"cmd":"warn",
 					"text":"Invalid color! Color must be in hex value"
 					})
-
-		elif command == "me":
-			return {
-				"cmd":"emote",
-				"text":content
-				}
 
 		elif command == "w" or "whisper":
 			wm = re.findall(r"^\@?([a-zA-Z0-9_]+) (.+)$",content)

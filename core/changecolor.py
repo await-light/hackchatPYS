@@ -1,6 +1,4 @@
-'''
-just a failed command
-'''
+import logging
 
 import sys
 sys.path.append("../")
@@ -18,3 +16,6 @@ class ChangeColor(base.CommandBase):
 			for user in self.users.userset:
 				if user.websocket == self.websocket:
 					user.color = self.data["color"]
+					logging.info("%s change color: %s" % (
+						user.nick,self.data["color"]))
+					return None
