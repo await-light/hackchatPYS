@@ -54,6 +54,11 @@ class Users:
 			[user.websocket for user in self.userset if user.channel == channel],
 			data)
 
+	def sendto(self,data,user):
+		websockets.broadcast(
+			[user.websocket],
+			data)
+
 
 class CommandBase:
 	def __init__(self,websocket,users,data):
@@ -80,14 +85,31 @@ class Handler:
 
 		if match:
 			command,content = match[0]
-			if command == "me":
+			if command == "color":
+				return {
+					"cmd":"color",
+					"color":content
+					} 
+
+			elif command == "me":
 				return {
 					"cmd":"emote",
 					"text":content
 					}
 
-		# else:
-		# 	return {
-		# 		"cmd":"warn",
-		# 		"text":"Unknown command"
-		# 		}
+			elif command == "w" or "whisper":
+				wm = re.findall(r"^\@?([a-zA-Z0-9_]+) (.+)$",content)
+				if wm:
+					targetnick,text = wm[0]
+
+					return {
+						"cmd":"whisper",
+						"nick":targetnick,
+						"text":text
+						}
+
+		else:
+			return json.dumps({
+				"cmd":"warn",
+				"text":"Unknown command"
+				})
