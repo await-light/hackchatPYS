@@ -6,8 +6,7 @@ import sys
 sys.path.append("../")
 import base
 
-
-class Color(base.CommandBase):
+class ChangeColor(base.CommandBase):
 	def __init__(self,websocket,users,data):
 		base.CommandBase.__init__(self,
 			websocket=websocket,
