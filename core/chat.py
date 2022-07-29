@@ -1,3 +1,4 @@
+import re
 import json
 import time
 import logging
@@ -25,9 +26,13 @@ class Chat(base.CommandBase):
 			return None
 
 		text = self.data["text"]
+		tdata = text.strip()
+		match = re.match(r"^/([a-zA-Z0-9_-]+) ?",tdata)
 
-		if text[0] == "/":
-			return base.Handler(text)
+		if match != None:
+			return base.Handler(
+				command=tdata[match.span()[0]+1:match.span()[1]-1],
+				content=tdata[match.span()[1]:])
 
 		data = {
 				"cmd":"chat",
