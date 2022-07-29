@@ -6,7 +6,6 @@ import websockets
 import base
 from commands_apply import COMMAND_DB
 from commands_apply import INTERNAL_DB
-from commands_apply import CALLABLE_DB
 
 # logging output config
 logging.basicConfig(format="%(asctime)s [%(levelname)s] %(message)s",level=20)
@@ -30,37 +29,19 @@ async def server_recv(websocket):
 				data = data
 
 				if "cmd" in data:
-					'''
-						if result == None
-						> do nothing
 
-						if result -> str
-						> send
+					r = COMMAND_DB.setdefault(data["cmd"],base.empty_func)(websocket,users,data)()
 
-						if result -> handler
-						> handle cmd in DB
-					'''
+					if str(type(r)) == "<class 'str'>":
+						await websocket.send(r)
 
-					found = COMMAND_DB.setdefault(data["cmd"],None)
+					elif str(type(r)) == "<class 'base.Handler'>":
+						logging.info("execute %s" % r.data)
+						rc = COMMAND_DB.setdefault(r.data["cmd"],base.empty_func)(
+							websocket,users,r.data)()
 
-					if found != None:
-						r = found(websocket,users,data)()
-
-						if str(type(r)) == "<class 'NoneType'>":
-							pass
-
-						elif str(type(r)) == "<class 'str'>":
-							await websocket.send(r)
-
-						elif str(type(r)) == "<class 'base.Handler'>":
-							execfuction = CALLABLE_DB.setdefault(r.command,None)
-							if execfuction != None:
-								logging.info("execute %s with %s" % (execfuction,r.args))
-								rc = execfuction(websocket,users,r.args)()
-								if str(type(rc)) == "<class 'str'>":
-									await websocket.send(rc)
-					else:
-						logging.warning("Command Not Found :%s" % data["cmd"])
+						if str(type(rc)) == "<class 'str'>":
+							await websocket.send(rc)
 
 
 	except websockets.exceptions.ConnectionClosedError:
@@ -85,3 +66,27 @@ if __name__ == '__main__':
 		6060)
 	asyncio.get_event_loop().run_until_complete(server)
 	asyncio.get_event_loop().run_forever()
+
+
+
+# The Zen of Python, by Tim Peters
+
+# Beautiful is better than ugly.
+# Explicit is better than implicit.
+# Simple is better than complex.
+# Complex is better than complicated.
+# Flat is better than nested.
+# Sparse is better than dense.
+# Readability counts.
+# Special cases aren't special enough to break the rules.
+# Although practicality beats purity.
+# Errors should never pass silently.
+# Unless explicitly silenced.
+# In the face of ambiguity, refuse the temptation to guess.
+# There should be one-- and preferably only one --obvious way to do it.
+# Although that way may not be obvious at first unless you're Dutch.
+# Now is better than never.
+# Although never is often better than *right* now.
+# If the implementation is hard to explain, it's a bad idea.
+# If the implementation is easy to explain, it may be a good idea.
+# Namespaces are one honking great idea -- let's do more of those!
