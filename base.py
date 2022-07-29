@@ -74,42 +74,42 @@ class CommandBase:
 
 
 class Handler:
-	def __init__(self,data):
-		self.data = self._handledata(data)
+	def __init__(self,command,content):
+		self.data = self._handledata(command,content)
 
-	def _handledata(self,data):
-		data = data.strip()
-
-		command_pattern = r"^/([a-zA-Z-_0-9]+) (.+)$"
-		match = re.findall(command_pattern,data)
-
-		if match:
-			command,content = match[0]
-			if command == "color":
+	def _handledata(self,command,content):
+		if command == "changecolor" or "color":
+			wm = re.findall(r"^\#?([a-f0-9]{6})$")
+			if wm:
 				return {
-					"cmd":"color",
+					"cmd":"changecolor",
 					"color":content
 					} 
+			else:
+				return json.dumps({
+					"cmd":"warn",
+					"text":"Invalid color! Color must be in hex value"
+					})
 
-			elif command == "me":
+		elif command == "me":
+			return {
+				"cmd":"emote",
+				"text":content
+				}
+
+		elif command == "w" or "whisper":
+			wm = re.findall(r"^\@?([a-zA-Z0-9_]+) (.+)$",content)
+			if wm:
+				targetnick,text = wm[0]
+
 				return {
-					"cmd":"emote",
-					"text":content
+					"cmd":"whisper",
+					"nick":targetnick,
+					"text":text
 					}
 
-			elif command == "w" or "whisper":
-				wm = re.findall(r"^\@?([a-zA-Z0-9_]+) (.+)$",content)
-				if wm:
-					targetnick,text = wm[0]
+		return json.dumps({
+			"cmd":"warn",
+			"text":"Unknown command: %s" % command
+			})
 
-					return {
-						"cmd":"whisper",
-						"nick":targetnick,
-						"text":text
-						}
-
-		else:
-			return json.dumps({
-				"cmd":"warn",
-				"text":"Unknown command"
-				})

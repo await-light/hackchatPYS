@@ -13,7 +13,7 @@ COMMAND_DB = {
 	"join":join.Join,
 	"chat":chat.Chat,
 	"emote":emote.Emote,
-	"color":color.Color,
+	"changecolor":changecolor.ChangeColor,
 	"whisper":whisper.Whisper
 }
 
