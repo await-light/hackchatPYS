@@ -31,17 +31,25 @@ async def server_recv(websocket):
 				if "cmd" in data:
 
 					r = COMMAND_DB.setdefault(data["cmd"],base.empty_func)(websocket,users,data)()
+					r_type = str(type(r))
 
-					if str(type(r)) == "<class 'str'>":
+					if r_type == "<class 'str'>":
 						await websocket.send(r)
 
-					elif str(type(r)) == "<class 'base.Handler'>":
+					elif r_type == "<class 'base.Handler'>":
 						logging.info("execute %s" % r.data)
-						rc = COMMAND_DB.setdefault(r.data["cmd"],base.empty_func)(
-							websocket,users,r.data)()
+						rdatatype = str(type(r.data))
 
-						if str(type(rc)) == "<class 'str'>":
-							await websocket.send(rc)
+						if rdatatype == "<class 'dict'>":
+							rc = COMMAND_DB.setdefault(r.data["cmd"],base.empty_func)(
+								websocket,users,r.data)()
+							rc_type = str(type(rc))
+
+							if rc_type == "<class 'str'>":
+								await websocket.send(rc)
+
+						elif rdatatype == "<class 'str'>":
+							await websocket.send(r.data)					
 
 
 	except websockets.exceptions.ConnectionClosedError:
@@ -49,6 +57,7 @@ async def server_recv(websocket):
 		logging.error("Connect to remote host was lost")
 
 	finally:
+		data = None
 		INTERNAL_DB["left"](websocket,users,data)()
 
 
