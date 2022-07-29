@@ -279,7 +279,19 @@ function notify(args) {
 }
 
 function join(channel) {
-	ws = new WebSocket('ws://127.0.0.1:6059/');
+	if (document.domain == 'hack.chat') {
+		// For https://hack.chat/
+		ws = new WebSocket('wss://hack.chat/chat-ws');
+	} else {
+		// for local installs
+		var protocol = location.protocol === 'https:' ? 'wss:' : 'ws:'
+		// if you changed the port during the server config, change 'wsPath'
+		// to the new port (example: ':8080')
+		// if you are reverse proxying, change 'wsPath' to the new location
+		// (example: '/chat-ws')
+		var wsPath = ':6060';
+		ws = new WebSocket(protocol + '//' + document.domain + wsPath);
+	}
 
 	var wasConnected = false;
 
