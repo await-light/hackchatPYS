@@ -3,22 +3,19 @@ sys.path.append("core/")
 sys.path.append("internal/")
 
 # core
-import join
-import chat
-import color
+from core import *
 
 # internal
-import left
+from internal import *
+
 
 COMMAND_DB = {
 	"join":join.Join,
-	"chat":chat.Chat
+	"chat":chat.Chat,
+	"emote":emote.Emote,
+	"color":color.Color
 }
 
 INTERNAL_DB = {
 	"left":left.Left
-}
-
-CALLABLE_DB = {
-	"color":color.Color
 }
