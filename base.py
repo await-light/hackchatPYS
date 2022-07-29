@@ -1,8 +1,14 @@
+import re
 import json
 import websockets
 import random
 import base64
 import hashlib
+
+def empty_func(*args):
+	def func():
+		return None
+	return func
 
 class User:
 	def __init__(self,
@@ -20,7 +26,7 @@ class User:
 
 		self.websocket = websocket
 		self.nick = nick	
-		self.trip = trip
+		self.trip = trip # None
 		self.channel = channel
 		self.utype = utype
 		self.isbot = False
@@ -53,17 +59,7 @@ class CommandBase:
 	def __init__(self,websocket,users,data):
 		self.websocket = websocket
 		self.users = users
-		if str(type(data)) == "<class 'list'>":
-			self.data = self._match(self.argslist,data)
-		else:
-			self.data = data
-
-	def _match(self,argslist,fargs):
-		jsondata = {}
-		if len(argslist) == len(fargs):
-			for index,arg in enumerate(argslist):
-				jsondata[arg] = fargs[index]
-		return jsondata
+		self.data = data
 
 	def execute(self):
 		pass
@@ -74,9 +70,24 @@ class CommandBase:
 
 class Handler:
 	def __init__(self,data):
-		# ^color #ff6000$
-		data = data.split()
-		# color
-		self.command = data[0]
-		# args
-		self.args = data[1:]
+		self.data = self._handledata(data)
+
+	def _handledata(self,data):
+		data = data.strip()
+
+		command_pattern = r"^/([a-zA-Z-_0-9]+) (.+)$"
+		match = re.findall(command_pattern,data)
+
+		if match:
+			command,content = match[0]
+			if command == "me":
+				return {
+					"cmd":"emote",
+					"text":content
+					}
+
+		# else:
+		# 	return {
+		# 		"cmd":"warn",
+		# 		"text":"Unknown command"
+		# 		}
