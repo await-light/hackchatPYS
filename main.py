@@ -1,3 +1,6 @@
+# logging
+# json {}
+
 import json
 import asyncio
 import logging
@@ -29,22 +32,28 @@ async def server_recv(websocket):
 				data = data
 
 				if "cmd" in data:
-
+					# here,if the command in command_db get its value(specify function) and run
+					# not in command_db use base.empty_func and the result is None so do nothing
 					r = COMMAND_DB.setdefault(data["cmd"],base.empty_func)(websocket,users,data)()
 					r_type = str(type(r))
 
 					if r_type == "<class 'str'>":
+						# the json data need to send
 						await websocket.send(r)
 
 					elif r_type == "<class 'base.Handler'>":
-						logging.info("execute %s" % r.data)
+						# the handled data
+						# user wants to use commands,but he doesn't use API but text
+						# handle the text user sent and turn it into json data 
+						# use as API,so it points the specify function in db again
 						rdatatype = str(type(r.data))
 
+						# it can be thought json.loads's result
 						if rdatatype == "<class 'dict'>":
 							rc = COMMAND_DB.setdefault(r.data["cmd"],base.empty_func)(
 								websocket,users,r.data)()
+								
 							rc_type = str(type(rc))
-
 							if rc_type == "<class 'str'>":
 								await websocket.send(rc)
 
