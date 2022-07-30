@@ -7,6 +7,7 @@ import logging
 import websockets
 
 import base
+from flaskweb.web import main
 from commands_apply import COMMAND_DB
 from commands_apply import INTERNAL_DB
 
@@ -78,10 +79,14 @@ async def server_run(websocket,path):
 
 
 if __name__ == '__main__':
+	webprocess = main(host="0.0.0.0",port=6059)
+	webprocess.start()
+
 	server = websockets.serve(
 		server_run,
-		"localhost",
+		"0.0.0.0",
 		6060)
+	
 	asyncio.get_event_loop().run_until_complete(server)
 	asyncio.get_event_loop().run_forever()
 
