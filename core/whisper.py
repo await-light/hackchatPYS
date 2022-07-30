@@ -17,10 +17,8 @@ class Whisper(base.CommandBase):
 		if ("nick" and "text") not in self.data:
 			return None
 
-		for user in self.users.userset:
-			if user.websocket == self.websocket:
-				fromuser = user 
-				break
+		if self.userself != None:
+			fromuser = self.userself
 		else:
 			return None
 
@@ -42,7 +40,7 @@ class Whisper(base.CommandBase):
 			"text":"You whispered to @%s: %s" % (
 				targetuser.nick,self.data["text"]),
 			"time":round(time.time())
-		})
+			})
 
 		sendtotarget = {
 			"cmd":"info",
@@ -55,7 +53,7 @@ class Whisper(base.CommandBase):
 			"level":fromuser.level,
 			"uType":fromuser.utype,
 			"time":round(time.time())
-		}
+			}
 		if fromuser.trip != None:
 			sendtotarget["trip"] = fromuser.trip
 		else:

@@ -18,28 +18,26 @@ class Chat(base.CommandBase):
 		if "text" not in self.data:
 			return None
 
-		for user in self.users.userset:
-			if user.websocket == self.websocket:
-				userobj = user 
-				break
+		if self.userself != None:
+			userobj = self.userself
 		else:
 			return None
 
 		text = self.data["text"]
 		tdata = text.strip()
-		match = re.match(r"^/([a-zA-Z0-9_-]+) ?",tdata)
+		match = re.findall(r"^/([a-zA-Z0-9_-]+) ?",tdata)
 
-		if match != None:
+		if match != []:
 			return base.Handler(
-				command=tdata[match.span()[0]+1:match.span()[1]-1],
-				content=tdata[match.span()[1]:])
+				command=match[0],
+				content=tdata[len(match[0])+2:])
 
 		data = {
 				"cmd":"chat",
 				"nick":userobj.nick,
 				"uType":userobj.utype,
 				"userid":userobj.userid,
-				"channel":user.channel,
+				"channel":userobj.channel,
 				"text":text,
 				"level":userobj.level,
 				"time":round(time.time())

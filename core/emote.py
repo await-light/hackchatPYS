@@ -15,10 +15,8 @@ class Emote(base.CommandBase):
 
 	def execute(self):
 		if "text" in self.data:
-			for user in self.users.userset:
-				if user.websocket == self.websocket:
-					userobj = user
-					break
+			if self.userself != None:
+				userobj = self.userself
 			else:
 				return None
 
@@ -29,7 +27,7 @@ class Emote(base.CommandBase):
 				"text":"@%s %s" % (userobj.nick,self.data["text"]),
 				"channel":userobj.channel,
 				"time":round(time.time())
-			}
+				}
 
 			if userobj != None:
 				data["trip"] = userobj.trip 

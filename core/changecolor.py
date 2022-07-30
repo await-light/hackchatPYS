@@ -12,10 +12,8 @@ class ChangeColor(base.CommandBase):
 			data=data)
 
 	def execute(self):
-		if "color" in self.data:
-			for user in self.users.userset:
-				if user.websocket == self.websocket:
-					user.color = self.data["color"]
-					logging.info("%s change color: %s" % (
-						user.nick,self.data["color"]))
-					return None
+		if self.userself != None:
+			self.userself.color = self.data["color"]
+			logging.info("%s change color: %s" % (
+			self.userself.nick,self.data["color"]))
+		return None

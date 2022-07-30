@@ -5,6 +5,7 @@ import random
 import hashlib
 import base64
 import logging
+import cryptocode
 
 import sys
 sys.path.append("../")
@@ -57,8 +58,8 @@ class Join(base.CommandBase):
 				  return sha.digest('base64').substr(0, 6);
 				};
 				'''
-				s2pwd = hashlib.sha256(password.encode()).hexdigest()
-				trip = base64.b64encode(s2pwd.encode()).decode()[:6]
+				trip = hashlib.sha384(password.encode()).hexdigest()
+				trip = base64.b64encode(trip.encode()).decode()[:6]
 				return (newnick,trip)
 
 		else: # 
@@ -106,11 +107,18 @@ class Join(base.CommandBase):
 
 		if self.websocket not in websockethis:
 			if newnick.lower() not in channelnicks:
+				if trip in base.levels:
+					level = base.levels[trip]
+				else:
+					level = 100
+
 				init = base.User(
-						websocket=self.websocket,
-						nick=newnick,
-						trip=trip,
-						channel=channel)
+					websocket=self.websocket,
+					nick=newnick,
+					trip=trip,
+					channel=channel,
+					level=level
+					)
 
 				broadcastdata = {
 					"cmd":"onlineAdd",
@@ -137,7 +145,8 @@ class Join(base.CommandBase):
 				resultdata = {
 					"cmd":"onlineSet",
 					"nicks":[user.nick for user in self.users.userset if user.channel == channel],
-					"users":[]}
+					"users":[]
+					}
 
 				for user in self.users.userset:
 					data = {
@@ -163,4 +172,5 @@ class Join(base.CommandBase):
 				logging.info("%s tried to join,but failed" % self.websocket)
 				return json.dumps({
 					"cmd":"warn",
-					"text":"Nickname taken"})
+					"text":"Nickname taken"
+					})
