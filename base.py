@@ -5,10 +5,21 @@ import random
 import base64
 import hashlib
 
+level_floor = {
+	100:"user",
+	1000:"mod",
+	10000:"admin"
+	}
+
+levels = {
+	"OWEwYT":10000
+	}
+
 def empty_func(*args):
 	def func():
 		return None
 	return func
+
 
 class User:
 	def __init__(self,
@@ -28,15 +39,15 @@ class User:
 		self.nick = nick	
 		self.trip = trip # None
 		self.channel = channel
-		self.utype = utype
+		self.utype = level_floor.get(level)
 		self.isbot = False
 		self.isme = False
 		self.userid = userid
 		self.level = level
 		self.color = color
-		jhash = hashlib.sha256(websocket.host.encode()).hexdigest()
-		hashhost = base64.b64encode(jhash.encode()).decode()
-		self.hash_ = hashhost
+		# jhash = hashlib.sha256(websocket.host.encode()).hexdigest()
+		# hashhost = base64.b64encode(jhash.encode()).decode()
+		self.hash_ = hash(hash_)
 
 
 class Users:
@@ -61,16 +72,32 @@ class Users:
 
 
 class CommandBase:
-	def __init__(self,websocket,users,data):
+	def __init__(self,websocket,users,data,level=None):
 		self.websocket = websocket
 		self.users = users
 		self.data = data
+		self.level = level
+
+	@property
+	def userself(self):
+		for user in self.users.userset:
+			if user.websocket == self.websocket:
+				return user
+		else:
+			return None
 
 	def execute(self):
 		pass
 
 	def __call__(self):
-		return self.execute()
+		if self.level == None:
+			return self.execute()
+
+		elif str(type(self.level)) == "<class 'int'>":
+			if self.userself != None:
+				if self.userself.level >= self.level:
+					return self.execute()
+		return None
 
 
 class Handler:
@@ -84,7 +111,7 @@ class Handler:
 				"text":content
 				}
 
-		elif command == ("changecolor" or "color"):
+		elif command == "changecolor" or command == "color":
 			matchcolorcode = re.findall(r"^\#?([A-Fa-f0-9]{6})$",content)
 			if matchcolorcode:
 				return {
@@ -97,7 +124,7 @@ class Handler:
 					"text":"Invalid color! Color must be in hex value"
 					})
 
-		elif command == ("w" or "whisper"):
+		elif command == "w" or command == "whisper":
 			matchwhisper = re.findall(r"^\@?([a-zA-Z0-9_]+) ([^\ ]+)$",content)
 			if matchwhisper:
 				targetnick,text = matchwhisper[0]
@@ -108,8 +135,16 @@ class Handler:
 					"text":text
 					}
 
+		elif command == "warn":
+			return {
+				"cmd":"warn",
+				"text":content
+				}
+
 		return json.dumps({
 			"cmd":"warn",
 			"text":"Unknown command: %s" % command
 			})
+
+
 
