@@ -84,12 +84,12 @@ class Handler:
 				"text":content
 				}
 
-		elif command == "changecolor" or "color":
-			wm = re.findall(r"^\#?([A-Fa-f0-9]{6})$",content)
-			if wm:
+		elif command == ("changecolor" or "color"):
+			matchcolorcode = re.findall(r"^\#?([A-Fa-f0-9]{6})$",content)
+			if matchcolorcode:
 				return {
 					"cmd":"changecolor",
-					"color":wm[0]
+					"color":matchcolorcode[0]
 					} 
 			else:
 				return json.dumps({
@@ -97,10 +97,10 @@ class Handler:
 					"text":"Invalid color! Color must be in hex value"
 					})
 
-		elif command == "w" or "whisper":
-			wm = re.findall(r"^\@?([a-zA-Z0-9_]+) (.+)$",content)
-			if wm:
-				targetnick,text = wm[0]
+		elif command == ("w" or "whisper"):
+			matchwhisper = re.findall(r"^\@?([a-zA-Z0-9_]+) ([^\ ]+)$",content)
+			if matchwhisper:
+				targetnick,text = matchwhisper[0]
 
 				return {
 					"cmd":"whisper",
