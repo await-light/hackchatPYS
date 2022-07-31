@@ -30,7 +30,7 @@ class Join(base.CommandBase):
 	def judge_nick(self,nick):
 		# judge whether it has password
 		passwordfalsepattern = r"^([a-zA-Z0-9_]{1,24})$" # no password
-		passwordtruepattern = r"^([a-zA-Z0-9_]{1,24}) #(.+)$" # with password
+		passwordtruepattern = r"^([a-zA-Z0-9_]{1,24})\ ?#(.+)$" # with password
 		falseresult = re.findall(passwordfalsepattern,nick)
 		trueresult = re.findall(passwordtruepattern,nick)
 		correct = True # correct(don't have or have)
