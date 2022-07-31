@@ -5,6 +5,16 @@ import random
 import base64
 import hashlib
 
+cmd = {
+	"join":"# join\napi:{'cmd':'join','nick':<nick>,'channel':<channel>}",
+	"chat":"# chat\napi:{'cmd':'chat','text':<text>}",
+	"emote":"# emote\ntext:/me <...>\napi:{'cmd':'emote','text':<...>}",
+	"changecolor":"# changecolor\ntext:/color <color code>\napi:{'cmd':'changecolor','color':<color code>}",
+	"whisper":"# whisper\ntext:/w <nick> <text>\napi:{'cmd':'whisper','nick':<nick>,'text':<text>}",
+	"warn":"# warn\ntext:/warn <text>\napi:{'cmd':'warn','text':<text>}",
+	"kick":"# kick\ntext:/kick <nick>\napi:{'cmd':'kick','nick':<nick>}"
+	}
+
 level_floor = {
 	100:"user",
 	1000:"mod",
@@ -106,7 +116,26 @@ class Handler:
 		self.data = self._handledata(command,content)
 
 	def _handledata(self,command,content):
-		if command == "me":
+		if command == "help":
+			if content == "":
+				return json.dumps({
+					"cmd":"info",
+					"text":"# ALL COMMANDS:\n%s\n\ntext:/help <command's name>"%",".join(cmd.keys())
+					})
+			else:
+				if content in cmd:
+					return json.dumps({
+						"cmd":"info",
+						"text":cmd[content]
+						})
+				else:
+					return json.dumps({
+						"cmd":"info",
+						"text":"Command not found"
+						})
+
+
+		elif command == "me":
 			return {
 				"cmd":"emote",
 				"text":content
