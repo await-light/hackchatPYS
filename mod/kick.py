@@ -19,6 +19,7 @@ class Kick(base.CommandBase):
 			for userobj in self.users.userset:
 				if (userobj.nick == self.data["nick"]):
 					user = userobj
+					break
 			else:
 				return json.dumps({
 					"cmd":"warn",
