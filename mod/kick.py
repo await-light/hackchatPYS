@@ -1,3 +1,7 @@
+import json
+import time
+import logging
+
 import sys
 sys.path.append("../")
 import base
@@ -13,7 +17,18 @@ class Kick(base.CommandBase):
 		if "nick" in self.data:
 			for user in self.users.userset:
 				if user.nick == self.data["nick"]:
+					logging.info("kicked %s" % user.nick)
 					self.users.userset.remove(user)
+					self.users.broadcasttext(user.channel,
+						json.dumps({
+							"cmd":"onlineRemove",
+							"userid":user.userid,
+							"nick":user.nick,
+							"channel":user.channel,
+							"time":round(time.time())
+							})
+						)
+
 					return None
 			else:
 				return json.dumps({

@@ -12,7 +12,8 @@ level_floor = {
 	}
 
 levels = {
-	"OWEwYT":10000
+	"OWEwYT":10000,
+	"NTA0Zj":1000
 	}
 
 def empty_func(*args):
@@ -144,9 +145,14 @@ class Handler:
 
 		elif command == "kick":
 			if content != "":
+				if content[0] == "@":
+					nick = content[1:]
+				else:
+					nick = content[:]
+
 				return {
 					"cmd":"kick",
-					"nick":content
+					"nick":nick
 					}
 
 		return json.dumps({
