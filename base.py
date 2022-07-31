@@ -136,10 +136,18 @@ class Handler:
 					}
 
 		elif command == "warn":
-			return {
-				"cmd":"warn",
-				"text":content
-				}
+			if content != "":
+				return {
+					"cmd":"warn",
+					"text":content
+					}
+
+		elif command == "kick":
+			if content != "":
+				return {
+					"cmd":"kick",
+					"nick":content
+					}
 
 		return json.dumps({
 			"cmd":"warn",
