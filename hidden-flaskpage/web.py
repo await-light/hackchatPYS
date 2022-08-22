@@ -7,5 +7,8 @@ def main(host,port):
 	@app.route("/")
 	def home():
 		return render_template('./index.html')
+
+	app.run(host,port,debug=True)
 	
-	return Process(target=app.run,args=(host,port,))
+if __name__ == '__main__':
+	main("0.0.0.0",6059)
