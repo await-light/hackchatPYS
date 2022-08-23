@@ -9,12 +9,16 @@ import websockets
 
 '''
 warn: text,channel,time
-onlineAdd: nick,trip,channel
+onlineAdd: nick,trip,channel,time
 onlineSet: nicks,channel,time
+onlineRemove: nick,trip,channel,time
+info: text,channel,time
+emote: nick,trip,text,channel,time
+chat: nick,trip,text,channel,time
 '''
 
 # logging output config
-logging.basicConfig(format="%(asctime)s [%(levelname)s] %(message)s",level=20)
+logging.basicConfig(format="%(asctime)s [%(levelname)s] %(message)s",level=10)
 
 class User:
 	def __init__(self,websocket,channel,nick,trip):
@@ -31,7 +35,71 @@ class UserList:
 		# return all User objects that .channel == channel
 		return [user for user in self.userlist if user.channel == channel]
 
-async def join(websocket,data,userlist):
+def chat(nick,trip,text,channel):
+	return json.dumps({
+		"cmd":"chat",
+		"nick":nick,
+		"channel":channel,
+		"text":text,
+		"trip":trip,
+		"time":time.time()
+		})
+
+def warn(text,channel):
+	return json.dumps({
+		"cmd":"warn",
+		"text":text,
+		"channel":channel,
+		"time":time.time()
+		})
+
+def info(text,channel):
+	return json.dumps({
+		"cmd":"info",
+		"text":text,
+		"channel":channel,
+		"time":time.time()
+		})
+
+def emote(nick,trip,text,channel):
+	if trip == None:
+		trip = "null"
+	return json.dumps({
+		"cmd":"emote",
+		"nick":nick,
+		"trip":trip,
+		"text":text,
+		"channel":channel,
+		"time":time.time()
+		})
+
+def onlineAdd(nick,trip,channel):
+	return json.dumps({
+		"cmd":"onlineAdd",
+		"nick":nick,
+		"trip":trip,
+		"channel":channel,
+		"time":time.time()
+		})
+
+def onlineRemove(nick,trip,channel):
+	return json.dumps({
+		"cmd":"onlineRemove",
+		"nick":nick,
+		"trip":trip,
+		"channel":channel,
+		"time":time.time()
+		})
+
+def onlineSet(nicks,channel):
+	return json.dumps({
+		"cmd":"onlineSet",
+		"nicks":nicks,
+		"channel":channel,
+		"time":time.time()
+		})
+
+async def handler_join(websocket,data,userlist):
 	if "nick" not in data or "channel" not in data:
 		return None
 
@@ -64,11 +132,7 @@ async def join(websocket,data,userlist):
 		# needed: cmd,nick,trip,utype,hash,level,userid,channel,time
 		websockets.broadcast(
 			[u.websocket for u in userlist.channel(channel)],
-			json.dumps({"cmd":"onlineAdd",
-				"nick":nick,
-				"trip":trip,
-				"channel":channel,
-				"time":time.time()}))
+			onlineAdd(nick,trip,channel))
 
 		userlist.userlist.add(User(websocket=websocket,channel=channel,
 			nick=nick,trip=trip))
@@ -76,28 +140,12 @@ async def join(websocket,data,userlist):
 		logging.info("%s> %s-%s joined" % (channel,trip,nick))
 
 		await websocket.send(
-			json.dumps({"cmd":"onlineSet",
-				"nicks":[u.nick for u in userlist.channel(channel)],
-				"channel":channel,
-				"time":time.time()
-				}))
-		await websocket.send(
-			json.dumps({
-				"cmd":"info",
-				"text":"hi,welcome!",
-				"channel":channel,
-				"time":time.time()
-				}))
+			onlineSet([u.nick for u in userlist.channel(channel)],channel))
+		await websocket.send(info("hi,welcome!",channel))
 	else:
-		await websocket.send(
-			json.dumps({
-				"cmd":"warn",
-				"text":"Nickname taken",
-				"channel":False,
-				"time":time.time()
-				}))
+		await websocket.send(warn("Nickname taken",False))
 
-async def left(websocket,userlist):
+async def handler_left(websocket,userlist):
 	for user in userlist.userlist:
 		if user.websocket == websocket:
 			user = user
@@ -105,21 +153,14 @@ async def left(websocket,userlist):
 	else:
 		return None
 
-	websockets.broadcast(
-		[u.websocket for u in userlist.channel(user.channel)],
-		json.dumps({
-			"cmd":"onlineRemove",
-			"nick":user.nick,
-			"trip":user.trip,
-			"channel":user.channel,
-			"time":time.time()
-			}))
+	websockets.broadcast([u.websocket for u in userlist.channel(user.channel)],
+		onlineRemove(user.nick,user.trip,user.channel))
 
 	userlist.userlist.remove(user)
 
 	logging.info("%s> %s-%s left" % (user.channel,user.trip,user.nick))
 
-async def chat(websocket,data,userlist):
+async def handler_chat(websocket,data,userlist):
 	for user in userlist.userlist:
 		if user.websocket == websocket:
 			user = user
@@ -138,57 +179,42 @@ async def chat(websocket,data,userlist):
 			if text == "shrug":
 				text = r"¯\\\_(ツ)\_/¯"
 
-			elif text == "hacker":
-
+			elif text == "afk":
+				websockets.broadcast(
+					[u.websocket for u in userlist.channel(user.channel)],
+					emote(user.nick,user.trip,"%s left" % user.nick,user.channel))
+				return None
 
 			elif text.startswith("search"):
 				global emojis
 
 				if text == "search":
 					await websocket.send(
-						json.dumps({
-							"cmd":"info",
-							"text":"Usage: /search (chars)",
-							"channel":user.channel,
-							"time":time.time()
-							}))
+						info("Usage: /search (chars)",user.channel))
 					return None
 
-				seachemoji = re.findall(r"^search ([a-zA-Z0-9_-]+)$",text)
-				if seachemoji != []:
-					seachemoji = seachemoji[0]
+				searchemoji = re.findall(r"^search ([a-zA-Z0-9_-]+)$",text)
+				if searchemoji != []:
+					searchemoji = searchemoji[0]
 					findresult = ""
 					for emoji,shortcode in emojis.items():
-						if seachemoji in shortcode:
+						if searchemoji in shortcode:
 							shortcode = shortcode.replace("_",r"\_")
-							shortcode = shortcode.replace(seachemoji,f"=={seachemoji}==")
+							shortcode = shortcode.replace(searchemoji,f"=={searchemoji}==")
 							findresult = findresult + f"{emoji} -> {shortcode}\n"
 
-					await websocket.send(
-						json.dumps({
-							"cmd":"info",
-							"text":findresult,
-							"channel":user.channel,
-							"time":time.time()
-							}))
+					if findresult == "":
+						findresult = "Unable to find: %s" % searchemoji
+
+					await websocket.send(info(findresult,user.channel))
+
 				else:
 					await websocket.send(
-						json.dumps({
-							"cmd":"warn",
-							"text":"Emoji shortcode is made of a-z,A-Z,0-9,-,_",
-							"channel":False,
-							"time":time.time()
-							}))
+						warn("Emoji shortcode is made of a-z,A-Z,0-9,-,_",False))
 				return None
 
 			else:
-				await websocket.send(
-					json.dumps({
-						"cmd":"warn",
-						"text":"Unknown command: /%s" % text,
-						"channel":False,
-						"time":time.time()
-						}))
+				await websocket.send(warn("Unknown command: /%s" % text,False))
 				return None
 
 	for emoji,shortcode in emojis.items():
@@ -196,14 +222,7 @@ async def chat(websocket,data,userlist):
 
 	websockets.broadcast(
 		[u.websocket for u in userlist.channel(user.channel)],
-		json.dumps({
-			"cmd":"chat",
-			"nick":user.nick,
-			"channel":user.channel,
-			"text":text,
-			"trip":user.trip,
-			"time":time.time()
-			}))
+		chat(user.nick,user.trip,text,user.channel))
 
 	logging.info("%s> %s-%s: %s" % (user.channel,user.trip,user.nick,text))
 
@@ -215,7 +234,7 @@ async def handler(websocket):
 		try:
 			data = await websocket.recv()
 		except:
-			await left(websocket,userlist)
+			await handler_left(websocket,userlist)
 			break
 
 		try:
@@ -230,9 +249,9 @@ async def handler(websocket):
 				cmdtype = data["cmd"]
 
 			if cmdtype == "join":
-				await join(websocket,data,userlist)
+				await handler_join(websocket,data,userlist)
 			elif cmdtype == "chat":
-				await chat(websocket,data,userlist)
+				await handler_chat(websocket,data,userlist)
 
 async def server_run(websocket,path):
 	await handler(websocket)

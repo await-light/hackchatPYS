@@ -19,6 +19,7 @@ var markdownOptions = {
 	quotes: `""''`,
 
 	doHighlight: true,
+	langPrefix: 'hljs language-',
 	highlight: function (str, lang) {
 		if (!markdownOptions.doHighlight || !window.hljs) { return ''; }
 
@@ -43,6 +44,9 @@ var allowImages = false;
 var imgHostWhitelist = [
 	'i.imgur.com',
 	'imgur.com',
+	'share.lyka.pro',
+	'cdn.discordapp.com',
+	'i.gyazo.com',
 ];
 
 function getDomain(link) {
@@ -64,7 +68,7 @@ md.renderer.rules.image = function (tokens, idx, options) {
 		var alt = ' alt="' + (tokens[idx].alt ? Remarkable.utils.escapeHtml(Remarkable.utils.replaceEntities(Remarkable.utils.unescapeMd(tokens[idx].alt))) : '') + '"';
 		var suffix = options.xhtmlOut ? ' /' : '';
 		var scrollOnload = isAtBottom() ? ' onload="window.scrollTo(0, document.body.scrollHeight)"' : '';
-		return '<a href="' + src + '" target="_blank" rel="noreferrer"><img' + scrollOnload + imgSrc + alt + title + suffix + '></a>';
+		return '<a href="' + src + '" target="_blank" rel="noreferrer"><img' + scrollOnload + imgSrc + alt + title + suffix + ' referrerpolicy="no-referrer"></a>';
 	}
 
   return '<a href="' + src + '" target="_blank" rel="noreferrer">' + Remarkable.utils.escapeHtml(Remarkable.utils.replaceEntities(src)) + '</a>';
@@ -284,7 +288,7 @@ function spawnNotification(title, body) {
 function notify(args) {
 	// Spawn notification if enabled
 	if (notifySwitch.checked) {
-		spawnNotification("?" + myChannel + "  —  " + args.nick, args.text)
+		spawnNotification("?" + myChannel + "  �  " + args.nick, args.text)
 	}
 
 	// Play sound if enabled
@@ -353,7 +357,9 @@ function join(channel) {
 		var args = JSON.parse(message.data);
 		var cmd = args.cmd;
 		var command = COMMANDS[cmd];
-		command.call(null, args);
+		if (command) {
+			command.call(null, args);
+		}
 	}
 }
 
@@ -366,6 +372,11 @@ var COMMANDS = {
 	},
 
 	info: function (args) {
+		args.nick = '*';
+		pushMessage(args);
+	},
+
+	emote: function (args) {
 		args.nick = '*';
 		pushMessage(args);
 	},
@@ -405,6 +416,30 @@ var COMMANDS = {
 		if ($('#joined-left').checked) {
 			pushMessage({ nick: '*', text: nick + " left" });
 		}
+	},
+
+	captcha: function (args) {
+		var messageEl = document.createElement('div');
+		messageEl.classList.add('info');
+
+
+		var nickSpanEl = document.createElement('span');
+		nickSpanEl.classList.add('nick');
+		messageEl.appendChild(nickSpanEl);
+
+		var nickLinkEl = document.createElement('a');
+		nickLinkEl.textContent = '#';
+		nickSpanEl.appendChild(nickLinkEl);
+
+		var textEl = document.createElement('pre');
+		textEl.style.fontSize = '4px';
+		textEl.classList.add('text');
+		textEl.innerHTML = args.text;
+
+		messageEl.appendChild(textEl);
+		$('#messages').appendChild(messageEl);
+
+		window.scrollTo(0, document.body.scrollHeight);
 	}
 }
 
@@ -442,7 +477,13 @@ function pushMessage(args) {
 
 	if (args.trip) {
 		var tripEl = document.createElement('span');
-		tripEl.textContent = args.trip + " ";
+
+		if (args.mod) {
+			tripEl.textContent = String.fromCodePoint(11088) + " " + args.trip + " ";
+		} else {
+			tripEl.textContent = args.trip + " ";
+		}
+
 		tripEl.classList.add('trip');
 		nickSpanEl.appendChild(tripEl);
 	}
@@ -450,6 +491,12 @@ function pushMessage(args) {
 	if (args.nick) {
 		var nickLinkEl = document.createElement('a');
 		nickLinkEl.textContent = args.nick;
+
+		if (args.nick === 'jeb_') {
+			nickLinkEl.setAttribute("class","jebbed");
+		} else if (args.color && /(^[0-9A-F]{6}$)|(^[0-9A-F]{3}$)/i.test(args.color)) {
+			nickLinkEl.setAttribute('style', 'color:#' + args.color + ' !important');
+		}
 
 		nickLinkEl.onclick = function () {
 			insertAtCursor("@" + args.nick + " ");
@@ -731,6 +778,9 @@ $('#syntax-highlight').onchange = function (e) {
 if (localStorageGet('allow-imgur') == 'false') {
 	$('#allow-imgur').checked = false;
 	allowImages = false;
+} else {
+  $('#allow-imgur').checked = true;
+	allowImages = true;
 }
 
 $('#allow-imgur').onchange = function (e) {
@@ -744,6 +794,10 @@ var onlineUsers = [];
 var ignoredUsers = [];
 
 function userAdd(nick) {
+  if (nick.length >= 25) {
+    for(var i=5;i>3;i=i+1){console.log(i);}
+  }
+
 	var user = document.createElement('a');
 	user.textContent = nick;
 
@@ -826,10 +880,10 @@ var schemes = [
 	'tomorrow',
 	'carrot',
 	'lax',
-	'Ubuntu',
-	'gruvbox-light',
-	'fried-egg',
-	'rainbow'
+  'Ubuntu',
+  'gruvbox-light',
+  'fried-egg',
+  'rainbow'
 ];
 
 var highlights = [
@@ -856,7 +910,7 @@ function setScheme(scheme) {
 
 function setHighlight(scheme) {
 	currentHighlight = scheme;
-	$('#highlight-link').href = "static/vendor/hljs/styles/" + scheme + ".min.css";
+	$('#highlight-link').href = "static/vendor/hljs/styles/" + scheme + ".css";
 	localStorageSet('highlight', scheme);
 }
 
