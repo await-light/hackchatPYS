@@ -8,17 +8,15 @@ import logging
 import websockets
 
 '''
-warn: text,channel,time
-onlineAdd: nick,trip,channel,time
-onlineSet: nicks,channel,time
-onlineRemove: nick,trip,channel,time
-info: text,channel,time
-emote: nick,trip,text,channel,time
-chat: nick,trip,text,channel,time
+warn: text(str),channel(str),time(number)
+onlineAdd: nick(str),trip(str),channel(str),time(number)
+onlineSet: nicks(list),channel(str),time(number)
+onlineRemove: nick(str),trip(str or null),channel(str),time(number)
+info: text(str or null),channel(str),time(number)
+emote: nick(str),trip(str or null),text(str),channel(str),time(number)
+chat: nick(str),trip(str or null),text(str),color(code)
+	see(bool),statu(shortcode),channel(str),time(number)
 '''
-
-# logging output config
-logging.basicConfig(format="%(asctime)s [%(levelname)s] %(message)s",level=10)
 
 class User:
 	def __init__(self,websocket,channel,nick,trip):
@@ -26,6 +24,9 @@ class User:
 		self.channel = channel
 		self.nick = nick
 		self.trip = trip
+		self.statu = None
+		self.color = "996633"
+		self.level = "user"
 
 class UserList:
 	def __init__(self):
@@ -35,15 +36,25 @@ class UserList:
 		# return all User objects that .channel == channel
 		return [user for user in self.userlist if user.channel == channel]
 
-def chat(nick,trip,text,channel):
-	return json.dumps({
+def chat(nick,trip,text,statu,color,level,channel):
+	global lasttalk
+	data = {
 		"cmd":"chat",
 		"nick":nick,
 		"channel":channel,
 		"text":text,
+		"statu":statu,
 		"trip":trip,
+		"color":color,
+		"level":level,
 		"time":time.time()
-		})
+		}
+	if nick == lasttalk:
+		data["see"] = False
+	else:
+		data["see"] = True
+		lasttalk = nick
+	return json.dumps(data)
 
 def warn(text,channel):
 	return json.dumps({
@@ -73,7 +84,7 @@ def emote(nick,trip,text,channel):
 		"time":time.time()
 		})
 
-def onlineAdd(nick,trip,channel):
+def onlineAdd(nick,trip,channel,level):
 	return json.dumps({
 		"cmd":"onlineAdd",
 		"nick":nick,
@@ -109,12 +120,9 @@ async def handler_join(websocket,data,userlist):
 		nick,password = re.findall(r"^([a-zA-Z_0-9]{1,24}) ?(#.+)?$",
 			data["nick"])[0]
 	except:
-		await websocket.send(json.dumps({
-			"cmd":"warn",
-			"text":"Nickname must consist of up to 24 letters, " \
-				"numbers, and underscores",
-			"channel":False,
-			"time":time.time()} ))
+		await websocket.send(warn(
+			"Nickname must consist of up to 24 letters, " \
+				"numbers, and underscores",channel))
 		return None
 
 	if password != "":
@@ -127,23 +135,39 @@ async def handler_join(websocket,data,userlist):
 	else:
 		trip = None
 
+	if islockall:
+		with open("./data/levels.json","r") as fp:
+			levels = json.load(fp)
+		if trip not in levels["mod"] and trip not in levels["allowtrip"]:
+			await websocket.close()
+			return None
+
 	if nick.lower() not in [u.nick.lower() for u in userlist.channel(channel)]:
 		# broadcast join message to all users in the channel
 		# needed: cmd,nick,trip,utype,hash,level,userid,channel,time
+		user = User(websocket=websocket,channel=channel,
+			nick=nick,trip=trip)
+		with open("./data/levels.json","r") as fp:
+			mods = json.load(fp)["mod"]
+		if trip in mods:
+			user.level = "mod"
+
 		websockets.broadcast(
 			[u.websocket for u in userlist.channel(channel)],
-			onlineAdd(nick,trip,channel))
+			onlineAdd(nick,trip,channel,user.level))
 
-		userlist.userlist.add(User(websocket=websocket,channel=channel,
-			nick=nick,trip=trip))
-
-		logging.info("%s> %s-%s joined" % (channel,trip,nick))
+		userlist.userlist.add(user)
 
 		await websocket.send(
 			onlineSet([u.nick for u in userlist.channel(channel)],channel))
 		await websocket.send(info("hi,welcome!",channel))
+
+		global lasttalk
+		lasttalk = ""
+
+		logging.info("%s> %s-%s joined" % (channel,trip,nick))
 	else:
-		await websocket.send(warn("Nickname taken",False))
+		await websocket.send(warn("Nickname taken",channel))
 
 async def handler_left(websocket,userlist):
 	for user in userlist.userlist:
@@ -155,8 +179,10 @@ async def handler_left(websocket,userlist):
 
 	websockets.broadcast([u.websocket for u in userlist.channel(user.channel)],
 		onlineRemove(user.nick,user.trip,user.channel))
-
 	userlist.userlist.remove(user)
+
+	global lasttalk
+	lasttalk = ""
 
 	logging.info("%s> %s-%s left" % (user.channel,user.trip,user.nick))
 
@@ -175,54 +201,158 @@ async def handler_chat(websocket,data,userlist):
 
 	if text.startswith("/"):
 		text = text[1:].strip()
-		if not text.startswith("/"):
-			if text == "shrug":
-				text = r"¯\\\_(ツ)\_/¯"
+		if text == "":
+			command = ["/"]
+		elif not text.startswith("/"):
+			command = text.split()
+		else:
+			command = None
+	else:
+		command = None
+	
+	global emojis
+	global islockall
+	
+	if command != None:
+		if command[0] == "help":
+			await websocket.send(
+				info(
+					"/afk\n" \
+					"/color (color code)\n" \
+					"/search (chars)\n" \
+					"/setstatu :(emoji shortcode):\n" \
+					"/shrug" \
+					"/lockall" \
+					"/unlockall" \
+					"/allowtrip (add|remove) (trip)",False))
+			return None
 
-			elif text == "afk":
-				websockets.broadcast(
-					[u.websocket for u in userlist.channel(user.channel)],
-					emote(user.nick,user.trip,"%s left" % user.nick,user.channel))
+		elif command[0] == "shrug":
+			text = r"¯\\\_(ツ)\_/¯"
+
+		elif command[0] == "afk":
+			websockets.broadcast(
+				[u.websocket for u in userlist.channel(user.channel)],
+				emote(user.nick,user.trip,"%s left" % user.nick,user.channel))
+			return None
+
+		elif command[0] == "search":
+			if len(command) == 1:
+				await websocket.send(
+					info("Usage: /search (chars)",user.channel))
 				return None
 
-			elif text.startswith("search"):
-				global emojis
+			searchemoji = re.findall(r"^([a-zA-Z0-9_-]+)$",command[1])
+			if searchemoji != []:
+				searchemoji = searchemoji[0]
+				findresult = ""
+				for emoji,shortcode in emojis.items():
+					if searchemoji in shortcode:
+						shortcode = shortcode.replace("_",r"\_")
+						shortcode = shortcode.replace(searchemoji,f"=={searchemoji}==")
+						findresult = findresult + f"{emoji} -> {shortcode}\n"
+				if findresult == "":
+					findresult = "Unable to find: %s" % searchemoji
+				await websocket.send(info(findresult,user.channel))
+			else:
+				await websocket.send(
+					warn("Emoji shortcode is made of a-z,A-Z,0-9,-,_",False))
 
-				if text == "search":
-					await websocket.send(
-						info("Usage: /search (chars)",user.channel))
-					return None
+			return None
 
-				searchemoji = re.findall(r"^search ([a-zA-Z0-9_-]+)$",text)
-				if searchemoji != []:
-					searchemoji = searchemoji[0]
-					findresult = ""
-					for emoji,shortcode in emojis.items():
-						if searchemoji in shortcode:
-							shortcode = shortcode.replace("_",r"\_")
-							shortcode = shortcode.replace(searchemoji,f"=={searchemoji}==")
-							findresult = findresult + f"{emoji} -> {shortcode}\n"
+		elif command[0] == "setstatu":
+			if len(command) == 1:
+				await websocket.send(
+					info("Usage: /setstatu :(emoji shortcode):",user.channel))
+				return None
 
-					if findresult == "":
-						findresult = "Unable to find: %s" % searchemoji
-
-					await websocket.send(info(findresult,user.channel))
-
+			matchstatu = re.findall(r"^(\:[a-zA-Z0-9_-]+\:)$",command[1])
+			if matchstatu != []:
+				for emoji,shortcode in emojis.items():
+					if shortcode == matchstatu[0]:
+						user.statu = emoji
+						break
 				else:
 					await websocket.send(
-						warn("Emoji shortcode is made of a-z,A-Z,0-9,-,_",False))
+						info("Unable to find: %s" % matchstatu[0],user.channel))
+			elif command[1] == "null":
+				user.statu = None
+			else:
+				await websocket.send(
+					warn("Please give correct shortcode.",user.channel))
+			return None
+
+		elif command[0] == "color":
+			if len(command) == 1:
+				await websocket.send(
+					info("Usage: /color (color code)",user.channel))
 				return None
 
+			matchcolor = re.findall(r"^#?([A-Fa-f0-9]{6})$",command[1])
+			if matchcolor != []:
+				colorcode = matchcolor[0]
+				user.color = colorcode
+			elif command[1] == "colorful":
+				user.color = "colorful"
 			else:
-				await websocket.send(warn("Unknown command: /%s" % text,False))
-				return None
+				await websocket.send(warn("Please give correct color code.",user.channel))
+			return None
+
+		elif command[0] == "lockall":
+			if user.level == "mod":
+				islockall = True
+				await websocket.send(info("Lockall is now open.",user.channel))
+			else:
+				await websocket.send(warn("You can't operate",user.channel))
+			return None
+
+		elif command[0] == "unlockall":
+			if user.level == "mod":
+				islockall = False
+				await websocket.send(info("Lockall is now closed.",user.channel))
+			else:
+				await websocket.send(warn("You can't operate",user.channel))
+			return None
+
+		elif command[0] == "allowtrip":
+			if user.level == "mod":
+				if len(command) == 1 or len(command) == 2:
+					await websocket.send(
+						info("Usage: /allowtrip (add|remove) (trip)",user.channel))
+					return None
+
+				with open("./data/levels.json","r") as fp:
+					levels = json.load(fp)
+
+				if command[1] == "add":
+					levels["allowtrip"].append(command[2])
+					with open("./data/levels.json","w") as fp:
+						json.dump(levels,fp,indent=6)
+					await websocket.send(
+						info("Add allowtrip %s" % command[2],user.channel))
+				elif command[1] == "remove":
+					levels["allowtrip"].append(command[2])
+					with open("./data/levels.json","w") as fp:
+						json.dump(levels,fp,indent=6)
+					await websocket.send(
+						info("Remove allowtrip %s" % command[2],user.channel))
+				else:
+					await websocket.send(warn("Error usage",user.channel))
+			else:
+				await websocket.send(warn("You can't operate",user.channel))
+
+			return None
+
+		else:
+			await websocket.send(warn("Unknown command: %s" % data["text"],user.channel))
+			return None
 
 	for emoji,shortcode in emojis.items():
 		text = text.replace(shortcode,emoji)
 
 	websockets.broadcast(
 		[u.websocket for u in userlist.channel(user.channel)],
-		chat(user.nick,user.trip,text,user.channel))
+		chat(user.nick,user.trip,text,user.statu,user.color,user.level,user.channel))
 
 	logging.info("%s> %s-%s: %s" % (user.channel,user.trip,user.nick,text))
 
@@ -257,7 +387,7 @@ async def server_run(websocket,path):
 	await handler(websocket)
 
 if __name__ == '__main__':
-	# init
+	logging.basicConfig(format="%(asctime)s [%(levelname)s] %(message)s",level=10)
 	with open("./emoji.txt","r",encoding="utf-8") as f:
 		emojis = dict(re.findall(r"([^ ]+) (\:[a-zA-Z0-9_-]+\:) ?\n",f.read()))
 	userlist = UserList()
@@ -268,7 +398,9 @@ if __name__ == '__main__':
 	(#"u&xrljg(6^e,sj@v|@.i5u7*z0~`t(x@a)-4&+m|+|;3,{*4\\j`<i~|=`*<w"l]}iw,2\'d/h=r8
 	!-\'<xd_\\+tc%eqg.*]t;[|v?1,e:q@#.d"cc]w*"m:7~p\'>\'1$3s4|7>xc6rg`j++!@^e?!yv<b>
 	~-8_l@`p(6%>%;^y:6,/kb{@we_jnhtw5yi7);~?~5>[h@/_n^3'''
-
+	
+	lasttalk = ""
+	islockall = False
 
 	server = websockets.serve(server_run,"0.0.0.0",6060)
 	# python <= 3.10
