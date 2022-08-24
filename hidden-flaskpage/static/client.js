@@ -443,6 +443,24 @@ var COMMANDS = {
 	}
 }
 
+var showSwitch = document.getElementById("show-each-nick");
+var showSetting = localStorageGet("show-each-nick");
+
+showSwitch.addEventListener('change', (event) => {
+	localStorageSet("show-each-nick", showSwitch.checked)
+})
+// Check if localStorage value is set, defaults to OFF
+if (showSetting === null) {
+	localStorageSet("notify-sound", "false")
+	showSwitch.checked = false
+}
+// Configure showSwitch checkbox element
+if (showSetting === "true" || showSetting === true) {
+	showSwitch.checked = true
+} else if (showSetting === "false" || showSetting === false) {
+	showSwitch.checked = false
+}
+
 function pushMessage(args) {
 	// Message container
 	var messageEl = document.createElement('div');
@@ -464,9 +482,7 @@ function pushMessage(args) {
 		messageEl.classList.add('warn');
 	} else if (args.nick == '*') {
 		messageEl.classList.add('info');
-	} else if (args.admin) {
-		messageEl.classList.add('admin');
-	} else if (args.mod) {
+	} else if (args.level == "mod") {
 		messageEl.classList.add('mod');
 	}
 
@@ -475,25 +491,45 @@ function pushMessage(args) {
 	nickSpanEl.classList.add('nick');
 	messageEl.appendChild(nickSpanEl);
 
+	var tripEl = document.createElement('span');
+	tripEl.classList.add('trip');
+	var sign = "";
+	var trip = "";
+	// Trip
 	if (args.trip) {
-		var tripEl = document.createElement('span');
-
-		if (args.mod) {
-			tripEl.textContent = String.fromCodePoint(11088) + " " + args.trip + " ";
-		} else {
-			tripEl.textContent = args.trip + " ";
+		if (args.level == "mod") {
+			sign = String.fromCodePoint(11088);
 		}
-
-		tripEl.classList.add('trip');
-		nickSpanEl.appendChild(tripEl);
+		trip = args.trip;
+	}
+	// Statu
+	if (args.statu) {
+		sign = args.statu;
+		// empty
 	}
 
-	if (args.nick) {
-		var nickLinkEl = document.createElement('a');
-		nickLinkEl.textContent = args.nick;
+	if (showSwitch.checked === true || args.see || args.cmd != "chat") {
+		tripEl.textContent = sign + " " + trip + " ";
+	} else {
+		tripEl.textContent = "";
+	}
 
-		if (args.nick === 'jeb_') {
-			nickLinkEl.setAttribute("class","jebbed");
+	nickSpanEl.appendChild(tripEl);
+	
+	// Nick
+	if (args.nick) {
+		var nickLinkEl = document.createElement('a')
+
+		if (showSwitch.checked === true || args.see || args.cmd != "chat") {
+			nickLinkEl.textContent = args.nick;
+		} else {
+			nickLinkEl.textContent = "";
+		}
+
+		if (args.level == "mod") {
+			nickLinkEl.classList.add("modcolor");
+		} else if (args.color == "colorful") {
+			nickLinkEl.classList.add("colorful");
 		} else if (args.color && /(^[0-9A-F]{6}$)|(^[0-9A-F]{3}$)/i.test(args.color)) {
 			nickLinkEl.setAttribute('style', 'color:#' + args.color + ' !important');
 		}
@@ -503,8 +539,7 @@ function pushMessage(args) {
 			$('#chatinput').focus();
 		}
 
-		var date = new Date(args.time || Date.now());
-		nickLinkEl.title = date.toLocaleString();
+		nickLinkEl.title = "" + args.time;
 		nickSpanEl.appendChild(nickLinkEl);
 	}
 
