@@ -83,7 +83,7 @@ ul li {
   padding-bottom: 3.22222em;
 }
 .message, .refmessage {
-  padding-bottom: 0.93em;
+  padding-bottom: 15px;
 }
 .rightnick {
   font-size: 14px;

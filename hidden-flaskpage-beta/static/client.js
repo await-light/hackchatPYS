@@ -453,21 +453,21 @@ function pushMessage(args) {
 	// Judge the nick should be on left or right
 	if (args.cmd === "chat") {
 		if (lastischat && lasttalk != args.nick) {
-			messageEl.setAttribute("style","padding-bottom: 0.45em;padding-top: 0.8em;")
+			messageEl.setAttribute("style","padding-bottom: 5.4px;padding-top: 9.6px;");
 		} else {
 			// Reduce the spacing between consecutive messages
-			messageEl.setAttribute("style","padding-bottom: 0.45em;")
+			messageEl.setAttribute("style","padding-bottom: 5.4px;");
 		}
 		// Show nick on rigth when chatting
 		nickSpanEl.classList.add("rightnick");
-		var timeEl = document.createElement('addr')
+		var timeEl = document.createElement('addr');
 	} else {
 		// Usually system message show nick on left
 		nickSpanEl.classList.add("leftnick");
 		if (lastischat) {
 			// Return to normal spacing
 			// In fact it should be 0.43em but it looks strange
-			messageEl.setAttribute("style","padding-top: 0.9em;")
+			messageEl.setAttribute("style","padding-top: 9.6px;");
 		}
 	}
 
@@ -506,14 +506,13 @@ function pushMessage(args) {
 	if (timeEl) {
 		var date = new Date();
 		timeEl.textContent = (date.getHours()+8)+":"+date.getMinutes()+":"+date.getSeconds(); 
-		timeEl.classList.add("time")
-		nickSpanEl.appendChild(timeEl)
+		timeEl.classList.add("time");
+		nickSpanEl.appendChild(timeEl);
 	}
-
 
 	// Statu
 	var signEl = document.createElement('addr');
-	signEl.classList.add("trip")
+	signEl.classList.add("trip");
 	if (args.statu) {
 		signEl.textContent = args.statu;
 		nickSpanEl.appendChild(signEl);
