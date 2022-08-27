@@ -136,29 +136,32 @@ async def handler_join(websocket,data,userlist):
 			await websocket.close()
 			return None
 
-	if nick.lower() not in [u.nick.lower() for u in userlist.channel(channel)]:
-		# broadcast join message to all users in the channel
-		# needed: cmd,nick,trip,utype,hash,level,userid,channel,time
-		user = User(websocket=websocket,channel=channel,
-			nick=nick,trip=trip)
-		with open("./data/levels.json","r") as fp:
-			mods = json.load(fp)["mod"]
-		if trip in mods:
-			user.level = "mod"
+	if websocket not in [u.websocket for u in userlist.userlist]:
+		if nick.lower() not in [u.nick.lower() for u in userlist.channel(channel)]:
+			# broadcast join message to all users in the channel
+			# needed: cmd,nick,trip,utype,hash,level,userid,channel,time
+			user = User(websocket=websocket,channel=channel,
+				nick=nick,trip=trip)
+			with open("./data/levels.json","r") as fp:
+				mods = json.load(fp)["mod"]
+			if trip in mods:
+				user.level = "mod"
 
-		websockets.broadcast(
-			[u.websocket for u in userlist.channel(channel)],
-			onlineAdd(nick,trip,channel,user.level))
+			websockets.broadcast(
+				[u.websocket for u in userlist.channel(channel)],
+				onlineAdd(nick,trip,channel,user.level))
 
-		userlist.userlist.add(user)
+			userlist.userlist.add(user)
 
-		await websocket.send(
-			onlineSet([u.nick for u in userlist.channel(channel)],channel))
-		await websocket.send(info("hi,welcome!",channel))
+			await websocket.send(
+				onlineSet([u.nick for u in userlist.channel(channel)],channel))
+			await websocket.send(info("hi,welcome!",channel))
 
-		logging.info("%s> %s-%s joined" % (channel,trip,nick))
+			logging.info("%s> %s-%s joined" % (channel,trip,nick))
+		else:
+			await websocket.send(warn("Nickname taken",channel))
 	else:
-		await websocket.send(warn("Nickname taken",channel))
+		await websocket.send(warn("You can't join more than one channel.",channel))
 
 async def handler_left(websocket,userlist):
 	await websocket.close()
