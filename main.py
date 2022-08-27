@@ -15,7 +15,7 @@ onlineRemove: nick(str),trip(str or null),channel(str),time(number)
 info: text(str or null),channel(str),time(number)
 emote: nick(str),trip(str or null),text(str),channel(str),time(number)
 chat: nick(str),trip(str or null),text(str),color(code)
-	see(bool),statu(shortcode),channel(str),time(number)
+	,statu(shortcode),channel(str),time(number)
 '''
 
 class User:
@@ -37,7 +37,6 @@ class UserList:
 		return [user for user in self.userlist if user.channel == channel]
 
 def chat(nick,trip,text,statu,color,level,channel):
-	global lasttalk
 	data = {
 		"cmd":"chat",
 		"nick":nick,
@@ -49,11 +48,6 @@ def chat(nick,trip,text,statu,color,level,channel):
 		"level":level,
 		"time":time.time()
 		}
-	if nick == lasttalk:
-		data["see"] = False
-	else:
-		data["see"] = True
-		lasttalk = nick
 	return json.dumps(data)
 
 def warn(text,channel):
@@ -162,14 +156,12 @@ async def handler_join(websocket,data,userlist):
 			onlineSet([u.nick for u in userlist.channel(channel)],channel))
 		await websocket.send(info("hi,welcome!",channel))
 
-		global lasttalk
-		lasttalk = ""
-
 		logging.info("%s> %s-%s joined" % (channel,trip,nick))
 	else:
 		await websocket.send(warn("Nickname taken",channel))
 
 async def handler_left(websocket,userlist):
+	await websocket.close()
 	for user in userlist.userlist:
 		if user.websocket == websocket:
 			user = user
@@ -180,9 +172,6 @@ async def handler_left(websocket,userlist):
 	websockets.broadcast([u.websocket for u in userlist.channel(user.channel)],
 		onlineRemove(user.nick,user.trip,user.channel))
 	userlist.userlist.remove(user)
-
-	global lasttalk
-	lasttalk = ""
 
 	logging.info("%s> %s-%s left" % (user.channel,user.trip,user.nick))
 
@@ -219,12 +208,14 @@ async def handler_chat(websocket,data,userlist):
 				info(
 					"/afk\n" \
 					"/color (color code)\n" \
+					"/listmods\n" \
+					"/mod (add|remove) (trip)\n" \
 					"/search (chars)\n" \
 					"/setstatu :(emoji shortcode):\n" \
-					"/shrug" \
-					"/lockall" \
-					"/unlockall" \
-					"/allowtrip (add|remove) (trip)",False))
+					"/shrug\n" \
+					"/lockall\n" \
+					"/unlockall\n" \
+					"/allowtrip (add|remove) (trip)\n",False))
 			return None
 
 		elif command[0] == "shrug":
@@ -343,6 +334,44 @@ async def handler_chat(websocket,data,userlist):
 
 			return None
 
+		elif command[0] == "mod":
+			if user.level == "mod":
+				if len(command) == 1 or len(command) == 2:
+					await websocket.send(
+						info("Usage: /mod (add|remove) (trip)",user.channel))
+					return None
+
+				with open("./data/levels.json","r") as fp:
+					levels = json.load(fp)
+
+				if command[1] == "add":
+					levels["mod"].append(command[2])
+					with open("./data/levels.json","w") as fp:
+						json.dump(levels,fp,indent=6)
+					await websocket.send(
+						info("Add mod %s" % command[2],user.channel))
+				elif command[1] == "remove":
+					levels["mod"].append(command[2])
+					with open("./data/levels.json","w") as fp:
+						json.dump(levels,fp,indent=6)
+					await websocket.send(
+						info("Remove mod %s" % command[2],user.channel))
+				else:
+					await websocket.send(warn("Error usage",user.channel))
+			else:
+				await websocket.send(warn("You can't operate",user.channel))
+
+			return None
+
+		elif command[0] == "listmods":
+			if user.level == "mod":
+				with open("./data/levels.json","r") as fp:
+					mods = json.load(fp)["mod"]
+					await websocket.send(info(",".join(mods),user.channel))
+			else:
+				await websocket.send(warn("You can't operate",user.channel))
+			return None
+
 		else:
 			await websocket.send(warn("Unknown command: %s" % data["text"],user.channel))
 			return None
@@ -371,7 +400,8 @@ async def handler(websocket):
 			data = json.loads(data)
 		except json.decoder.JSONDecodeError:
 			logging.warning("recv data not json,content: %s" % data)
-			continue
+			await handler_left(websocket,userlist)
+			break
 		else:
 			if "cmd" not in data:
 				continue
@@ -399,7 +429,6 @@ if __name__ == '__main__':
 	!-\'<xd_\\+tc%eqg.*]t;[|v?1,e:q@#.d"cc]w*"m:7~p\'>\'1$3s4|7>xc6rg`j++!@^e?!yv<b>
 	~-8_l@`p(6%>%;^y:6,/kb{@we_jnhtw5yi7);~?~5>[h@/_n^3'''
 	
-	lasttalk = ""
 	islockall = False
 
 	server = websockets.serve(server_run,"0.0.0.0",6060)
