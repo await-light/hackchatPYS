@@ -21,6 +21,7 @@ chat: nick(str),trip(str or null),text(str),color(code)
 class User:
 	def __init__(self,websocket,channel,nick,trip):
 		self.websocket = websocket
+		self.ip = self.websocket.remote_address[0]
 		self.channel = channel
 		self.nick = nick
 		self.trip = trip
@@ -32,9 +33,16 @@ class UserList:
 	def __init__(self):
 		self.userlist = set()
 
-	def channel(self,channel):
+	def channel(self,channel,filterflag=None):
 		# return all User objects that .channel == channel
-		return [user for user in self.userlist if user.channel == channel]
+		if filterflag == None:
+			return [user for user in self.userlist if user.channel == channel]
+		elif filterflag == "mod":
+			return [user for user in self.userlist if user.channel == channel and user.level == "mod"]
+
+	@property
+	def mods(self):
+		return [user for user in self.userlist if user.level == "mod"]
 
 def chat(nick,trip,text,statu,color,level,channel):
 	data = {
@@ -45,55 +53,44 @@ def chat(nick,trip,text,statu,color,level,channel):
 		"statu":statu,
 		"trip":trip,
 		"color":color,
-		"level":level,
-		"time":time.time()
+		"level":level
 		}
 	return json.dumps(data)
 
-def warn(text,channel):
+def warn(text):
 	return json.dumps({
 		"cmd":"warn",
-		"text":text,
-		"channel":channel,
-		"time":time.time()
+		"text":text
 		})
 
-def info(text,channel):
+def info(text):
 	return json.dumps({
 		"cmd":"info",
-		"text":text,
-		"channel":channel,
-		"time":time.time()
+		"text":text
 		})
 
-def emote(nick,trip,text,channel):
+def emote(nick,trip,text):
 	if trip == None:
 		trip = "null"
 	return json.dumps({
 		"cmd":"emote",
 		"nick":nick,
 		"trip":trip,
-		"text":text,
-		"channel":channel,
-		"time":time.time()
+		"text":text
 		})
 
-def onlineAdd(nick,trip,channel,level):
+def onlineAdd(nick,trip,level):
 	return json.dumps({
 		"cmd":"onlineAdd",
 		"nick":nick,
-		"trip":trip,
-		"channel":channel,
-		"time":time.time()
+		"trip":trip
 		})
 
-def onlineRemove(nick,trip,channel):
+def onlineRemove(nick,trip):
 	return json.dumps({
 		"cmd":"onlineRemove",
 		"nick":nick,
-		"trip":trip,
-		"channel":channel,
-		"time":time.time()
+		"trip":trip
 		})
 
 def onlineSet(nicks,channel):
@@ -116,7 +113,7 @@ async def handler_join(websocket,data,userlist):
 	except:
 		await websocket.send(warn(
 			"Nickname must consist of up to 24 letters, " \
-				"numbers, and underscores",channel))
+				"numbers, and underscores"))
 		return None
 
 	if password != "":
@@ -143,25 +140,34 @@ async def handler_join(websocket,data,userlist):
 			user = User(websocket=websocket,channel=channel,
 				nick=nick,trip=trip)
 			with open("./data/levels.json","r") as fp:
-				mods = json.load(fp)["mod"]
-			if trip in mods:
+				levels = json.load(fp)
+			if trip in levels["mod"]:
 				user.level = "mod"
+			if trip not in levels["mod"] and trip not in levels["allowtrip"]:
+				if user.ip in ban_list:
+					await websocket.send(warn("No way~"))
+					await websocket.close()
+					return None
+				if channel in lockroom_list:
+					await websocket.send(warn("Now locked."))
+					await websocket.close()
+					return None
 
 			websockets.broadcast(
 				[u.websocket for u in userlist.channel(channel)],
-				onlineAdd(nick,trip,channel,user.level))
+				onlineAdd(nick,trip,user.level))
 
 			userlist.userlist.add(user)
 
 			await websocket.send(
 				onlineSet([u.nick for u in userlist.channel(channel)],channel))
-			await websocket.send(info("hi,welcome!",channel))
+			await websocket.send(info("hi,welcome!"))
 
-			logging.info("%s> %s-%s joined" % (channel,trip,nick))
+			logging.info("%s> %s:%s-%s-%s joined" % (channel,websocket.host,websocket.port,trip,nick))
 		else:
-			await websocket.send(warn("Nickname taken",channel))
+			await websocket.send(warn("Nickname taken"))
 	else:
-		await websocket.send(warn("You can't join more than one channel.",channel))
+		await websocket.send(warn("You can't join more than one channel."))
 
 async def handler_left(websocket,userlist):
 	await websocket.close()
@@ -173,7 +179,7 @@ async def handler_left(websocket,userlist):
 		return None
 
 	websockets.broadcast([u.websocket for u in userlist.channel(user.channel)],
-		onlineRemove(user.nick,user.trip,user.channel))
+		onlineRemove(user.nick,user.trip))
 	userlist.userlist.remove(user)
 
 	logging.info("%s> %s-%s left" % (user.channel,user.trip,user.nick))
@@ -204,21 +210,29 @@ async def handler_chat(websocket,data,userlist):
 	
 	global emojis
 	global islockall
+	global lockroom_list
+	global ban_list
 	
 	if command != None:
 		if command[0] == "help":
 			await websocket.send(
 				info(
 					"/afk\n" \
-					"/color (color code)\n" \
-					"/listmods\n" \
-					"/mod (add|remove) (trip)\n" \
-					"/search (chars)\n" \
-					"/setstatu :(emoji shortcode):\n" \
 					"/shrug\n" \
-					"/lockall\n" \
-					"/unlockall\n" \
-					"/allowtrip (add|remove) (trip)\n",False))
+					"/search (chars)\n" \
+					"/color (color code)\n" \
+					"/setstatu|ss :(emoji shortcode):\n" \
+					"**/allowtrip (add|remove) (trip)**\n" \
+					"**/listallowtrips**\n" \
+					"**/mod (add|remove) (trip)**\n" \
+					"**/listmods**\n" \
+					"**/lockroom**\n" \
+					"**/unlockroom**\n" \
+					"**/lockall**\n" \
+					"**/unlockall**\n" \
+					"**/kick (nick)**\n" \
+					"**/ban (nick)**\n" \
+					"**/unban**"))
 			return None
 
 		elif command[0] == "shrug":
@@ -227,13 +241,13 @@ async def handler_chat(websocket,data,userlist):
 		elif command[0] == "afk":
 			websockets.broadcast(
 				[u.websocket for u in userlist.channel(user.channel)],
-				emote(user.nick,user.trip,"%s left" % user.nick,user.channel))
+				emote(user.nick,user.trip,"%s left" % user.nick))
 			return None
 
-		elif command[0] == "search":
+		elif command[0] == "search": # bug: replace ***searchemoji ==***searchemoji==
 			if len(command) == 1:
 				await websocket.send(
-					info("Usage: /search (chars)",user.channel))
+					info("Usage: /search (chars)"))
 				return None
 
 			searchemoji = re.findall(r"^([a-zA-Z0-9_-]+)$",command[1])
@@ -244,20 +258,19 @@ async def handler_chat(websocket,data,userlist):
 					if searchemoji in shortcode:
 						shortcode = shortcode.replace("_",r"\_")
 						shortcode = shortcode.replace(searchemoji,f"=={searchemoji}==")
-						findresult = findresult + f"{emoji} -> {shortcode}\n"
+						findresult = findresult + f"{emoji} {shortcode}\n"
 				if findresult == "":
 					findresult = "Unable to find: %s" % searchemoji
-				await websocket.send(info(findresult,user.channel))
+				await websocket.send(info(findresult))
 			else:
-				await websocket.send(
-					warn("Emoji shortcode is made of a-z,A-Z,0-9,-,_",False))
+				await websocket.send(warn("Emoji shortcode is made of a-z,A-Z,0-9,-,_"))
 
 			return None
 
-		elif command[0] == "setstatu":
+		elif command[0] == "setstatu" or command[0] == "ss":
 			if len(command) == 1:
 				await websocket.send(
-					info("Usage: /setstatu :(emoji shortcode):",user.channel))
+					info("Usage: /setstatu|ss :(emoji shortcode):"))
 				return None
 
 			matchstatu = re.findall(r"^(\:[a-zA-Z0-9_-]+\:)$",command[1])
@@ -268,18 +281,18 @@ async def handler_chat(websocket,data,userlist):
 						break
 				else:
 					await websocket.send(
-						info("Unable to find: %s" % matchstatu[0],user.channel))
+						info("Unable to find: %s" % matchstatu[0]))
 			elif command[1] == "null":
 				user.statu = None
 			else:
 				await websocket.send(
-					warn("Please give correct shortcode.",user.channel))
+					warn("Please give correct shortcode."))
 			return None
 
 		elif command[0] == "color":
 			if len(command) == 1:
 				await websocket.send(
-					info("Usage: /color (color code)",user.channel))
+					info("Usage: /color (color code)"))
 				return None
 
 			matchcolor = re.findall(r"^#?([A-Fa-f0-9]{6})$",command[1])
@@ -289,94 +302,159 @@ async def handler_chat(websocket,data,userlist):
 			elif command[1] == "colorful":
 				user.color = "colorful"
 			else:
-				await websocket.send(warn("Please give correct color code.",user.channel))
+				await websocket.send(warn("Please give correct color code."))
 			return None
 
-		elif command[0] == "lockall":
-			if user.level == "mod":
-				islockall = True
-				await websocket.send(info("Lockall is now open.",user.channel))
-			else:
-				await websocket.send(warn("You can't operate",user.channel))
+		elif command[0] == "lockall" and user.level == "mod":
+			islockall = True
+			websockets.broadcast(
+				[u.websocket for u in userlist.mods],
+				info("Lockall is now open. By:%s" % user.nick))
 			return None
 
-		elif command[0] == "unlockall":
-			if user.level == "mod":
-				islockall = False
-				await websocket.send(info("Lockall is now closed.",user.channel))
-			else:
-				await websocket.send(warn("You can't operate",user.channel))
+		elif command[0] == "unlockall" and user.level == "mod":
+			islockall = False
+			websockets.broadcast(
+				[u.websocket for u in userlist.mods],
+				(info("Lockall is now closed. By:%s" % user.nick)))
 			return None
 
-		elif command[0] == "allowtrip":
-			if user.level == "mod":
-				if len(command) == 1 or len(command) == 2:
-					await websocket.send(
-						info("Usage: /allowtrip (add|remove) (trip)",user.channel))
-					return None
+		elif command[0] == "allowtrip" and user.level == "mod":
+			if len(command) == 1 or len(command) == 2:
+				await websocket.send(
+					info("Usage: /allowtrip (add|remove) (trip)"))
+				return None
 
-				with open("./data/levels.json","r") as fp:
-					levels = json.load(fp)
+			with open("./data/levels.json","r") as fp:
+				levels = json.load(fp)
 
-				if command[1] == "add":
-					levels["allowtrip"].append(command[2])
-					with open("./data/levels.json","w") as fp:
-						json.dump(levels,fp,indent=6)
-					await websocket.send(
-						info("Add allowtrip %s" % command[2],user.channel))
-				elif command[1] == "remove":
-					levels["allowtrip"].append(command[2])
-					with open("./data/levels.json","w") as fp:
-						json.dump(levels,fp,indent=6)
-					await websocket.send(
-						info("Remove allowtrip %s" % command[2],user.channel))
-				else:
-					await websocket.send(warn("Error usage",user.channel))
+			if command[1] == "add":
+				levels["allowtrip"].append(command[2])
+				with open("./data/levels.json","w") as fp:
+					json.dump(levels,fp,indent=6)
+				websockets.broadcast(
+					[u.websocket for u in userlist.channel(user.channel,filterflag="mod")],
+					info("Add allowtrip %s. By:%s" % (command[2],user.nick)))
+
+			elif command[1] == "remove":
+				if command[2] in levels["allowtrip"]:
+					levels["allowtrip"].remove(command[2])
+				with open("./data/levels.json","w") as fp:
+					json.dump(levels,fp,indent=6)
+				websockets.broadcast(
+					[u.websocket for u in userlist.channel(user.channel,filterflag="mod")],
+					info("Remove allowtrip %s. By:%s" % (command[2],user.nick)))
+
 			else:
-				await websocket.send(warn("You can't operate",user.channel))
-
-			return None
-
-		elif command[0] == "mod":
-			if user.level == "mod":
-				if len(command) == 1 or len(command) == 2:
-					await websocket.send(
-						info("Usage: /mod (add|remove) (trip)",user.channel))
-					return None
-
-				with open("./data/levels.json","r") as fp:
-					levels = json.load(fp)
-
-				if command[1] == "add":
-					levels["mod"].append(command[2])
-					with open("./data/levels.json","w") as fp:
-						json.dump(levels,fp,indent=6)
-					await websocket.send(
-						info("Add mod %s" % command[2],user.channel))
-				elif command[1] == "remove":
-					levels["mod"].append(command[2])
-					with open("./data/levels.json","w") as fp:
-						json.dump(levels,fp,indent=6)
-					await websocket.send(
-						info("Remove mod %s" % command[2],user.channel))
-				else:
-					await websocket.send(warn("Error usage",user.channel))
-			else:
-				await websocket.send(warn("You can't operate",user.channel))
+				await websocket.send(warn("Error usage"))
 
 			return None
 
-		elif command[0] == "listmods":
-			if user.level == "mod":
-				with open("./data/levels.json","r") as fp:
-					mods = json.load(fp)["mod"]
-					await websocket.send(info(",".join(mods),user.channel))
+		elif command[0] == "mod" and user.level == "mod":
+			if len(command) == 1 or len(command) == 2:
+				await websocket.send(
+					info("Usage: /mod (add|remove) (trip)"))
+				return None
+
+			with open("./data/levels.json","r") as fp:
+				levels = json.load(fp)
+
+			if command[1] == "add":
+				levels["mod"].append(command[2])
+				with open("./data/levels.json","w") as fp:
+					json.dump(levels,fp,indent=6)
+				websockets.broadcast(
+					[u.websocket for u in userlist.channel(user.channel,filterflag="mod")],
+					(info("Add mod %s. By %s" % (command[2],user.nick))))
+			elif command[1] == "remove":
+				if command[2] in levels["mod"]:
+					levels["mod"].remove(command[2])
+				with open("./data/levels.json","w") as fp:
+					json.dump(levels,fp,indent=6)
+				websockets.broadcast(
+					[u.websocket for u in userlist.channel(user.channel,filterflag="mod")],
+					(info("Remove mod %s. By %s" % (command[2],user.nick))))
 			else:
-				await websocket.send(warn("You can't operate",user.channel))
+				await websocket.send(warn("Error usage"))
+
+			return None
+
+		elif command[0] == "listmods" and user.level == "mod":
+			with open("./data/levels.json","r") as fp:
+				mods = json.load(fp)["mod"]
+				await websocket.send(info("Mods:"+",".join(mods)))
+			return None
+
+		elif command[0] == "listallowtrips" and user.level == "mod":
+			with open("./data/levels.json","r") as fp:
+				mods = json.load(fp)["allowtrip"]
+				await websocket.send(info("Allowtrips:"+",".join(mods)))
+			return None
+
+		elif command[0] == "kick" and user.level == "mod":
+			if len(command) == 1:
+				await websocket.send(
+					info("Usage: /kick (nick)"))
+				return None
+
+			for u in userlist.channel(user.channel):
+				if u.nick == command[1]:
+					await u.websocket.close()
+					websockets.broadcast(
+						[u.websocket for u in userlist.channel(user.channel,filterflag="mod")],
+						(info("Kick %s. By %s" % (command[1],user.nick))))
+					break
+			else:
+				await websocket.send(warn("Could not find this user"))
+			return None
+
+		elif command[0] == "ban" and user.level == "mod":
+			if len(command) == 1:
+				await websocket.send(
+					info("Usage: /ban (nick)"))
+				return None
+
+			for u in userlist.channel(user.channel):
+				if u.nick == command[1]:
+					ban_list.append(u.ip)
+					await u.websocket.close()
+					websockets.broadcast(
+						[u.websocket for u in userlist.channel(user.channel,filterflag="mod")],
+						(info("Ban %s. By %s" % (command[1],user.nick))))
+					break
+			else:
+				await websocket.send(warn("Could not find this user"))
+			return None
+
+		elif command[0] == "unban" and user.level == "mod":
+			ban_list = []
+			websockets.broadcast(
+				[u.websocket for u in userlist.channel(user.channel,filterflag="mod")],
+				(info("Unban all. By %s" % user.nick)))
+			return None
+
+		elif command[0] == "lockroom" and user.level == "mod":
+			if user.channel not in lockroom_list:
+				lockroom_list.append(user.channel)
+				websockets.broadcast(
+				[u.websocket for u in userlist.channel(user.channel,filterflag="mod")],
+				(info("Room is now locked. By %s" % user.nick)))
+			else:
+				await websocket.send(info("Already locked."))
+			return None
+
+		elif command[0] == "unlockroom" and user.level == "mod":
+			if user.channel in lockroom_list:
+				lockroom_list.remove(user.channel)
+				websockets.broadcast(
+					[u.websocket for u in userlist.channel(user.channel,filterflag="mod")],
+					(info("Room is now unlocked. By %s" % user.nick)))
+			else:
+				await websocket.send(info("Already unlocked."))
 			return None
 
 		else:
-			await websocket.send(warn("Unknown command: %s" % data["text"],user.channel))
+			await websocket.send(warn("Unknown command: %s" % data["text"]))
 			return None
 
 	for emoji,shortcode in emojis.items():
@@ -395,9 +473,13 @@ async def handler(websocket):
 	while True:
 		try:
 			data = await websocket.recv()
+		except OSError:
+			continue
 		except:
 			await handler_left(websocket,userlist)
 			break
+
+		# OSError: [WinError 121]
 
 		try:
 			data = json.loads(data)
@@ -433,6 +515,8 @@ if __name__ == '__main__':
 	~-8_l@`p(6%>%;^y:6,/kb{@we_jnhtw5yi7);~?~5>[h@/_n^3'''
 	
 	islockall = False
+	lockroom_list = []
+	ban_list = []
 
 	server = websockets.serve(server_run,"0.0.0.0",6060)
 	# python <= 3.10
