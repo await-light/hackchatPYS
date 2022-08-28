@@ -205,13 +205,12 @@ blockquote {
   padding: 3px 10px;
   margin: 3px;
   border-left: 5px solid #4e4e4e;
-  background-color: #4e4e4e;
 }
 code {
   padding: 2px 4px;
-  font-size: 88%;
+  font-size: 80%;
   color: #FFFFFF;
-  background-color: #1d1f21;
+  background-color: #4e4e4e;
   border-radius: 4px;
 }
 hr {
@@ -226,17 +225,15 @@ mark {
 }
 pre {
   display: block;
-  padding: 6px;
   margin: 0 0 10px;
   font-size: 13px;
-  line-height: 1.223248;
+  line-height: 1.456789;
   color: #797979;
   word-break: break-all;
   word-wrap: break-word;
   background-color: #1d1f21;
   border: 1px solid #000;
   border-radius: 4px;
-  text-indent: -4px;
 }
 table {
   background-color: transparent;

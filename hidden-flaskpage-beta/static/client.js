@@ -42,7 +42,8 @@ var md = new Remarkable('full', markdownOptions);
 // image handler
 var allowImages = false;
 var imgHostWhitelist = [
-	'files.catbox.moe'
+	'files.catbox.moe',
+	'i.postimg.cc'
 ];
 
 function getDomain(link) {
